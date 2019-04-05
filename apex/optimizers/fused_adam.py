@@ -145,6 +145,3 @@ class FusedAdam(torch.optim.Optimizer):
                                      bias_correction,
                                      group['weight_decay'])
         return loss
-
-
-class FusedAdamNew(torch.optim.Optimizer):
