@@ -2,7 +2,7 @@ import types
 import torch
 import importlib
 
-class FusedAdamLamb(torch.optim.Optimizer):
+class FusedLamb(torch.optim.Optimizer):
     
     """Implements Adam algorithm. Currently GPU-only.  Requires Apex to be installed via
     ``python setup.py install --cuda_ext --cpp_ext``.
@@ -36,15 +36,15 @@ class FusedAdamLamb(torch.optim.Optimizer):
                  lr=1e-3, bias_correction = True,
                  betas=(0.9, 0.999), eps=1e-8, eps_inside_sqrt = False,
                  weight_decay=0., max_grad_norm=0., amsgrad=False):
-        global fused_adam_cuda
-        fused_adam_cuda = importlib.import_module("fused_adam_cuda")
+        global fused_lamb_cuda
+        fused_lamb_cuda = importlib.import_module("fused_lamb_cuda")
 
         if amsgrad:
             raise RuntimeError('FusedAdam does not support the AMSGrad variant.')
         defaults = dict(lr=lr, bias_correction=bias_correction,
                         betas=betas, eps=eps, weight_decay=weight_decay,
                         max_grad_norm=max_grad_norm)
-        super(FusedAdamLamb, self).__init__(params, defaults)
+        super(FusedLamb, self).__init__(params, defaults)
         self.eps_mode = 0 if  eps_inside_sqrt else 1
 
     def step(self, closure=None, grads=None, output_params=None, scale=1., grad_norms=None):
@@ -130,7 +130,7 @@ class FusedAdamLamb(torch.optim.Optimizer):
                 state['step'] += 1
 
                 out_p = torch.tensor([], dtype = torch.float) if output_param is None else output_param
-                fused_adam_cuda.lamb(p.data,
+                fused_lamb_cuda.lamb(p.data,
                                      out_p,
                                      exp_avg,
                                      exp_avg_sq,
