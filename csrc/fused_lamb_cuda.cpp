@@ -1,7 +1,10 @@
+/*Apex Fused_ADAM_code modified by Samyam Rajbhandari (samyamr@microsoft.com) to implement LAMB optimizer*/
 #include <torch/extension.h>
 
 // CUDA forward declaration
-void fused_lamb_cuda(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor & v, at::Tensor & g, float lr, float beta1, float beta2, float eps, float grad_scale, int step, int mode, int bias_correction, float decay);
+void fused_lamb_cuda(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor & v, at::Tensor & g, 
+                        float lr, float beta1, float beta2, float eps, float grad_scale, int step, int mode, int bias_correction, float decay,
+                        at::Tensor & w_l2_i,  at::Tensor & w_l2_i2, at::Tensor & u_l2_i, at::Tensor & u_l2_i );
 
 #define CHECK_CUDA(x) AT_ASSERTM(x.type().is_cuda(), #x " must be a CUDA tensor")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x " must be contiguous")
@@ -20,7 +23,18 @@ void lamb(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor & v, a
         AT_ASSERTM(g.numel() == num_elem, "number of elements in g and p tensors should be equal");
         AT_ASSERTM(p_copy.numel() == num_elem || p_copy.numel() == 0, "number of elements in p_copy and p tensors should be equal, or p_copy should be empty");
 
-        fused_lamb_cuda(p, p_copy, m, v, g, lr, beta1, beta2, eps, grad_scale, step, mode, bias_correction, decay);
+        //intermediate for weight L2 reduction
+        //make sure that the threads per block is at least 512 during the kernel launch otherwise the behavious is unexpected
+        at::Tensor w_l2_i = at::empty({512}, p.options().dtype(input.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : input.type().scalarType()));
+        at::Tensor w_l2_i2 = at::empty({1}, p.options().dtype(input.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : input.type().scalarType()));
+        
+        //intermediate for update L2 reduction
+        //make sure that the threads per block is at least 512 during the kernel launch otherwise the behavious is unexpected
+        at::Tensor u_l2_i = at::empty({512}, p.options().dtype(input.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : input.type().scalarType()));
+        at::Tensor u_l2_i2 = at::empty({1}, p.options().dtype(input.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : input.type().scalarType()));
+
+
+        fused_lamb_cuda(p, p_copy, m, v, g, lr, beta1, beta2, eps, grad_scale, step, mode, bias_correction, decay, w_l2_i, w_l2_i2, u_l2_i, u_l2_i2);
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {

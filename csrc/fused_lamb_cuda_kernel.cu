@@ -31,7 +31,11 @@ __global__ void lamb_cuda_kernel(
         const float step_size,
         const size_t tsize,
         adamMode_t mode,
-        const float decay)
+        const float decay,
+        T* __restrict__ w_l2_i,
+        T* __restrict__ w_l2_i2,
+        T* __restrict__ u_l2_i,
+        T* __restrict__ u_l2_i2)
 {
         //Assuming 2D grids and 2D blocks
         const int blockId = gridDim.x * blockIdx.y + blockIdx.x;
@@ -39,9 +43,13 @@ __global__ void lamb_cuda_kernel(
         const int threadIdInBlock = threadIdx.y * blockDim.x + threadIdx.x;
         const int i = (blockId * threadsPerBlock + threadIdInBlock);
         const int totThreads = gridDim.x*gridDim.y*threadsPerBlock;
+        
+        extern __shared__ float w_l2[];
+        extern __shared__ float u_l2[];
 
         for (int j = i; j < tsize; j+=totThreads) {
                 T scaled_grad = g[j]/grad_scale;
+                float pj = (float)p[j]
                 m[j] = b1*m[j] + (1-b1)*scaled_grad;
                 v[j] = b2*v[j] + (1-b2)*scaled_grad*scaled_grad;
                 float denom;
@@ -50,9 +58,16 @@ __global__ void lamb_cuda_kernel(
                 else // Mode 1
                     denom = sqrtf(v[j]) + eps;
                 float update = (m[j]/denom) + (decay*p[j]);
-                p[j] = p[j] - (step_size*update);
-                if (p_copy != NULL) p_copy[j] = (GRAD_T) p[j];
+                
+                u_l2[threadIdInBlock] += update * update;
+                w_l2[threadidInBlock] += pj * pj; 
+                //p[j] = p[j] - (step_size*update);
+                //if (p_copy != NULL) p_copy[j] = (GRAD_T) p[j];
         }
+        __syncthreads();
+
+        
+
 }
 
 void fused_lamb_cuda(
@@ -69,7 +84,11 @@ void fused_lamb_cuda(
         int step,
         int mode,
         int bias_correction,
-        float decay)
+        float decay,
+        at::Tensor & w_l2_i,
+        at::Tensor & w_l2_i2,
+        at::Tensor & u_l2_i,
+        at::Tensor & u_l2_i2)
 {
 //        using namespace at;
 
@@ -77,7 +96,9 @@ void fused_lamb_cuda(
         int tsize = p.numel();
         //Determine #threads and #blocks
         const int threadsPerBlock = 512;
-        const dim3 blocks((tsize+threadsPerBlock-1)/threadsPerBlock);
+        num_blocks = (tsize+threadsPerBlock-1)/threadsPerBlock;
+        if (num_blocks > 512) num_blocks=512;
+        const dim3 blocks(num_blocks);
         AT_ASSERTM(at::cuda::detail::canUse32BitIndexMath(p), "parameter tensor is too large to be indexed with int32");
         //Constants
         float step_size = 0;
@@ -111,7 +132,11 @@ void fused_lamb_cuda(
                         step_size,
                         tsize,
                         (adamMode_t) mode,
-                        decay);
+                        decay,
+                        w_l2_i.data<accscalar_t>(),
+                        w_l2_i2.data<accscalar_t>(),
+                        u_l2_i.data<accscalar_t>(),
+                        u_l2_i2.data<accscalar_t>());
             }));
       } else {
             using namespace at;
@@ -129,7 +154,11 @@ void fused_lamb_cuda(
                         step_size,
                         tsize,
                         (adamMode_t) mode,
-                        decay);
+                        decay,
+                        w_l2_i.data<accscalar_t>(),
+                        w_l2_i2.data<accscalar_t>(),
+                        u_l2_i.data<accscalar_t>(),
+                        u_l2_i2.data<accscalar_t>());
             }));
       }
       THCudaCheck(cudaGetLastError());
