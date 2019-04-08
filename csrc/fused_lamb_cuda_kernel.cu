@@ -275,9 +275,7 @@ void fused_lamb_cuda(
         int bias_correction,
         float decay,
         at::Tensor & w_l2_i,
-        at::Tensor & w_l2_i2,
-        at::Tensor & u_l2_i,
-        at::Tensor & u_l2_i2)
+        at::Tensor & u_l2_i)
 {
 //        using namespace at;
 

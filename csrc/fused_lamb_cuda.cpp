@@ -4,7 +4,7 @@
 // CUDA forward declaration
 void fused_lamb_cuda(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor & v, at::Tensor & g, 
                         float lr, float beta1, float beta2, float eps, float grad_scale, int step, int mode, int bias_correction, float decay,
-                        at::Tensor & w_l2_i,  at::Tensor & w_l2_i2, at::Tensor & u_l2_i, at::Tensor & u_l2_i );
+                        at::Tensor & w_l2_i, at::Tensor & u_l2_i );
 
 #define CHECK_CUDA(x) AT_ASSERTM(x.type().is_cuda(), #x " must be a CUDA tensor")
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x " must be contiguous")
