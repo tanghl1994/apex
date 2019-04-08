@@ -20,41 +20,41 @@ namespace cg = cooperative_groups;
 
 // Utility class used to avoid linker errors with extern
 // unsized shared memory arrays with templated type
-template<class T>
-struct SharedMemory
-{
-    __device__ inline operator       T *()
+namespace {
+    // This is the un-specialized struct.  Note that we prevent instantiation of this
+    // struct by putting an undefined symbol in the function body so it won't compile.
+    template <typename T>
+    struct SharedMemory
     {
-        extern __shared__ int __smem[];
-        return (T *)__smem;
-    }
-
-    __device__ inline operator const T *() const
+        // Ensure that we won't compile any un-specialized types
+        __device__ inline operator T *()
+        {
+            extern __device__ void error(void);
+            error();
+            return NULL;
+        }
+    };
+    
+    template <>
+    struct SharedMemory <float>
     {
-        extern __shared__ int __smem[];
-        return (T *)__smem;
-    }
-};
-
-
-// specialize for double to avoid unaligned memory
-// access compile errors
-template<>
-struct SharedMemory<double>
-{
-    __device__ inline operator       double *()
+        __device__ inline operator float *()
+        {
+            extern __shared__ float s_float[];
+            return s_float;
+        }
+    };
+    
+    template <>
+    struct SharedMemory <double>
     {
-        extern __shared__ double __smem_d[];
-        return (double *)__smem_d;
+        __device__ inline operator double *()
+        {
+            extern __shared__ double s_double[];
+            return s_double;
+        }
+    };
     }
-
-    __device__ inline operator const double *() const
-    {
-        extern __shared__ double __smem_d[];
-        return (double *)__smem_d;
-    }
-};
-
 
 #include "type_shim.h"
 
