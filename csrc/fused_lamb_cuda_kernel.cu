@@ -293,7 +293,7 @@ void fused_lamb_cuda(
             cudaDeviceProp prop;
             cudaGetDeviceProperties(&prop,0);
             sm_count = prop.multiProcessorCount;
-            cudaCheckErrors(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm, lamb_cuda_kernel, threadsPerBlock, smemsize ))
+            cudaCheckErrors(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm, lamb_cuda_kernel, threadsPerBlock, smemsize ));
         }
 
         int max_active_blocks = num_blocks_per_sm * sm_count;
