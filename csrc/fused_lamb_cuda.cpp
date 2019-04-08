@@ -25,16 +25,13 @@ void lamb(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor & v, a
 
         //intermediate for weight L2 reduction
         //make sure that the threads per block is at least 512 during the kernel launch otherwise the behavious is unexpected
-        at::Tensor w_l2_i = at::empty({512}, p.options().dtype(input.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : input.type().scalarType()));
-        at::Tensor w_l2_i2 = at::empty({1}, p.options().dtype(input.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : input.type().scalarType()));
+        at::Tensor w_l2_i = at::empty({512}, p.options().dtype(p.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : p.type().scalarType()));
         
         //intermediate for update L2 reduction
         //make sure that the threads per block is at least 512 during the kernel launch otherwise the behavious is unexpected
-        at::Tensor u_l2_i = at::empty({512}, p.options().dtype(input.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : input.type().scalarType()));
-        at::Tensor u_l2_i2 = at::empty({1}, p.options().dtype(input.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : input.type().scalarType()));
+        at::Tensor u_l2_i = at::empty({512}, p.options().dtype(p.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : p.type().scalarType()));
 
-
-        fused_lamb_cuda(p, p_copy, m, v, g, lr, beta1, beta2, eps, grad_scale, step, mode, bias_correction, decay, w_l2_i, w_l2_i2, u_l2_i, u_l2_i2);
+        fused_lamb_cuda(p, p_copy, m, v, g, lr, beta1, beta2, eps, grad_scale, step, mode, bias_correction, decay, w_l2_i, u_l2_i);
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
