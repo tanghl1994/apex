@@ -204,7 +204,7 @@ __global__ void lamb_cuda_kernel(
         T* __restrict__ w_l2_i,
         T* __restrict__ u_l2_i)
 {
-        cg::grid_group cgg = cg::this_grid()
+        cg::grid_group cgg = cg::this_grid();
 
         //Assuming 2D grids and 2D blocks
         const int blockId = gridDim.x * blockIdx.y + blockIdx.x;
