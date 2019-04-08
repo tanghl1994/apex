@@ -162,8 +162,8 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::gri
  
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
-    extern __shared__ float s_a[];
-    extern __shared__ float s_b[];
+    extern __shared__ T s_a[];
+    extern __shared__ T s_b[];
 
     s_a[threadIdInBlock] = a;
     s_b[threadIdInBlock] = b;
