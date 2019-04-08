@@ -9,10 +9,11 @@
 #include "ATen/Type.h"
 #include "ATen/AccumulateType.h"
 #include <THC/THCGeneral.h>
-#include "helper_cuda.h"
 
 #include <iostream>
 
+#include <helper_functions.h>
+#include <cuda_runtime_api.h>
 #include <cooperative_groups.h>
 
 namespace cg = cooperative_groups;
