@@ -30,7 +30,7 @@ static int num_blocks_per_sm=-1;
 
 //s_a and s_b are in shared memory
 //g_a and g_b are in shared memory
-template <class T, int blockSize>
+template <typename T, int blockSize>
 __device__ void
 reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
 {
