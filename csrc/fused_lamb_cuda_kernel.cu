@@ -376,10 +376,10 @@ void fused_lamb_cuda(
             using namespace at;
             AT_DISPATCH_FLOATING_TYPES(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
 
-                scalar_t* nullptr = NULL;
+                scalar_t* nullptr1 = NULL;
                 void *kernelArgs[] ={
                     (void*)p.data<scalar_t>(),
-                    (void*)&nullptr,
+                    (void*)&nullptr1,
                     (void*)m.data<scalar_t>(),
                     (void*)v.data<scalar_t>(),
                     (void*)g.data<scalar_t>(),
@@ -390,7 +390,7 @@ void fused_lamb_cuda(
                     (void*)&step_size,
                     (void*)&tsize,
                     (void*)&lmode,
-                    (void*)&lecay,
+                    (void*)&ldecay,
                     (void*)w_l2_i.data<accscalar_t>(),
                     (void*)u_l2_i.data<accscalar_t>()
 
