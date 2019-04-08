@@ -219,7 +219,7 @@ __global__ void lamb_cuda_kernel(
         
         for (int j = i; j < tsize; j+=totThreads) {
                 T scaled_grad = g[j]/grad_scale;
-                float pj = (float)p[j]
+                float pj = (float)p[j];
                 m[j] = b1*m[j] + (1-b1)*scaled_grad;
                 v[j] = b2*v[j] + (1-b2)*scaled_grad*scaled_grad;
                 float denom;
@@ -234,7 +234,7 @@ __global__ void lamb_cuda_kernel(
                 
         }
 
-        reduce_two_vectors_in_register<T,512>(reg_w, reg_u, w_l2_i, u_l2_i);
+        reduce_two_vectors_in_register<T,512>(reg_w, reg_u, w_l2_i, u_l2_i, cgg);
         
         reg_w = sqrtf(w_l2_i[0]);
         reg_u = sqrtf(u_l2_i[0]);
@@ -417,3 +417,5 @@ void fused_lamb_cuda(
       THCudaCheck(cudaGetLastError());
 
 }
+
+//template __device__ void reduce_two_vectors_in_register<float,512>(float a, float b, float* g_a, float* g_b, cg::grid_group &cgg);
