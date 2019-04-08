@@ -325,6 +325,13 @@ void fused_lamb_cuda(
             AT_DISPATCH_FLOATING_TYPES_AND_HALF(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
                 using accscalar_t = at::acc_type<scalar_t, true>;
 
+                float lbeta1 = beta1;
+                float lbeta2 = beta2;
+                float leps = eps;
+                float lgrad_scale = grad_scale;
+                int lmode = mode;
+                float ldecay=decay;
+
 
                 void *kernelArgs[] ={
                         (void*)p.data<accscalar_t>(),
@@ -332,14 +339,14 @@ void fused_lamb_cuda(
                         (void*)m.data<accscalar_t>(),
                         (void*)v.data<accscalar_t>(),
                         (void*)g.data<scalar_t>(),
-                        (void*)&beta1,
-                        (void*)&beta2,
-                        (void*)&eps,
-                        (void*)&grad_scale,
+                        (void*)&lbeta1,
+                        (void*)&lbeta2,
+                        (void*)&leps,
+                        (void*)&lgrad_scale,
                         (void*)&step_size,
                         (void*)&tsize,
-                        (void*)&(adamMode_t) mode,
-                        (void*)&decay,
+                        (void*)&lmode,
+                        (void*)&ldecay,
                         (void*)w_l2_i.data<accscalar_t>(),
                         (void*)u_l2_i.data<accscalar_t>()
 
