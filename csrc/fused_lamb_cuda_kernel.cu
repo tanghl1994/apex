@@ -391,8 +391,8 @@ void fused_lamb_cuda(
                     (void*)&tsize,
                     (void*)&lmode,
                     (void*)&ldecay,
-                    (void*)w_l2_i.data<accscalar_t>(),
-                    (void*)u_l2_i.data<accscalar_t>()
+                    (void*)w_l2_i.data<scalar_t>(),
+                    (void*)u_l2_i.data<scalar_t>()
 
                 };
                 cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<scalar_t, scalar_t>, blocks, threads, kernelArgs, smemsize, stream);
