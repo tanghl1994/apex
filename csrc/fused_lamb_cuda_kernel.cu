@@ -168,7 +168,7 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::gri
     s_a[threadIdInBlock] = a;
     s_b[threadIdInBlock] = b;
 
-    reduce_blocks_in_shared_memory<T,blockSize>(s_a, s_b ,g_a, g_b);
+    reduce_block_in_shared_memory<T,blockSize>(s_a, s_b ,g_a, g_b);
 
     cg::sync(cgg);
 
@@ -180,7 +180,7 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::gri
             s_a[threadIdInBlock] = 0.0;
             s_b[threadIdInBlock] = 0.0
 
-        reduce_blocks_in_shared_memory<T,blockSize>(s_a, s_b, g_a, g_b);
+        reduce_block_in_shared_memory<T,blockSize>(s_a, s_b, g_a, g_b);
     }
     cg::sync(cgg);
 
