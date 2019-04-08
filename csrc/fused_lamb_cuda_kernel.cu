@@ -18,6 +18,45 @@
 
 namespace cg = cooperative_groups;
 
+// Utility class used to avoid linker errors with extern
+// unsized shared memory arrays with templated type
+namespace{
+template<class T>
+struct SharedMemory
+{
+    __device__ inline operator       T *()
+    {
+        extern __shared__ int __smem[];
+        return (T *)__smem;
+    }
+
+    __device__ inline operator const T *() const
+    {
+        extern __shared__ int __smem[];
+        return (T *)__smem;
+    }
+};
+
+
+// specialize for double to avoid unaligned memory
+// access compile errors
+template<>
+struct SharedMemory<double>
+{
+    __device__ inline operator       double *()
+    {
+        extern __shared__ double __smem_d[];
+        return (double *)__smem_d;
+    }
+
+    __device__ inline operator const double *() const
+    {
+        extern __shared__ double __smem_d[];
+        return (double *)__smem_d;
+    }
+};
+}
+
 #include "type_shim.h"
 
 typedef enum{
@@ -162,8 +201,8 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::gri
  
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
-    extern __shared__ T s_a[];
-    extern __shared__ T s_b[];
+    T *s_a = SharedMemory<T>();
+    T *s_b = SharedMemory<T>();
 
     s_a[threadIdInBlock] = a;
     s_b[threadIdInBlock] = b;
