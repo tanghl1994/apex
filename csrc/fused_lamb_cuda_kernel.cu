@@ -298,7 +298,7 @@ void fused_lamb_cuda(
 
         int max_active_blocks = num_blocks_per_sm * sm_count;
         if (num_blocks > max_active_blocks) num_blocks = max_active_blocks;
-        std::cout<<"Num Blocks, Num Threads "<<num_blocks<<", "<<threadsPerBlocks<<std::endl;
+        std::cout<<"Num Blocks, Num Threads "<<num_blocks<<", "<<threadsPerBlock<<std::endl;
 
         const dim3 blocks(num_blocks);
         const dim3 threads(threadsPerBlock);
