@@ -234,7 +234,7 @@ __global__ void lamb_cuda_kernel(
                 
         }
 
-        reduce_two_vectors_in_register<T,threadsPerBlock>(reg_w, reg_u, w_l2_i, u_l2_i);
+        reduce_two_vectors_in_register<T,512>(reg_w, reg_u, w_l2_i, u_l2_i);
         
         reg_w = sqrtf(w_l2_i[0]);
         reg_u = sqrtf(u_l2_i[0]);
@@ -294,7 +294,7 @@ void fused_lamb_cuda(
             cudaGetDeviceProperties(&prop,0);
             sm_count = prop.multiProcessorCount;
             
-            cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm, lamb_cuda_kernel<float,float>, threadsPerBlock, (size_t)2 * threadsPerBlock * sizeof(float) );
+            cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm, lamb_cuda_kernel<float,float>, threadsPerBlock, smemsize );
         }
 
         int max_active_blocks = num_blocks_per_sm * sm_count;
@@ -345,7 +345,7 @@ void fused_lamb_cuda(
 
                 };
 
-                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<accscalar_t, scalar_t>, blocks, threads, kernelArgs, smemSize, stream);
+                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<accscalar_t, scalar_t>, blocks, threads, kernelArgs, smemsize, stream);
                 /*lamb_cuda_kernel<accscalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<accscalar_t>(),
                         p_copy.numel() ? p_copy.data<scalar_t>() : NULL,
@@ -367,7 +367,7 @@ void fused_lamb_cuda(
             using namespace at;
             AT_DISPATCH_FLOATING_TYPES(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
 
-                scalar_t* nullptr = NULL
+                scalar_t* nullptr = NULL;
                 void *kernelArgs[] ={
                     (void*)p.data<scalar_t>(),
                     (void*)&nullptr,
@@ -386,7 +386,7 @@ void fused_lamb_cuda(
                     (void*)u_l2_i.data<accscalar_t>()
 
                 };
-                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<scalar_t, scalar_t>, blocks, threads, kernelArgs, smemSize, stream);
+                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<scalar_t, scalar_t>, blocks, threads, kernelArgs, smemsize, stream);
                 /*lamb_cuda_kernel<scalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<scalar_t>(),
                         NULL, //don't output p_copy for fp32, it's wasted write
