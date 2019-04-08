@@ -156,7 +156,7 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
 }
 
 template <typename T, int blockSize>
-__device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::group_grid &cgg){
+__device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::grid_group &cgg){
  
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
@@ -283,7 +283,7 @@ void fused_lamb_cuda(
         int tsize = p.numel();
         //Determine #threads and #blocks
         const int threadsPerBlock = 512;
-        num_blocks = (tsize+threadsPerBlock-1)/threadsPerBlock;
+        int num_blocks = (tsize+threadsPerBlock-1)/threadsPerBlock;
         if (num_blocks > 512) num_blocks=512;
         int smemsize = 2 * threadsPerBlock * sizeof(float);
         
@@ -291,7 +291,7 @@ void fused_lamb_cuda(
             cudaDeviceProp prop;
             cudaGetDeviceProperties(&prop,0);
             sm_count = prop.multiProcessorCount;
-            cudaCheckErrors(cudaOccupancyMaxActiveBlocksPerMultiProcessor(&num_blocks_per_sm, lamb_cuda_kernel, threadsPerBlock, smemsize ))
+            cudaCheckErrors(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm, lamb_cuda_kernel, threadsPerBlock, smemsize ))
         }
 
         int max_active_blocks = num_blocks_per_sm * sm_count;
