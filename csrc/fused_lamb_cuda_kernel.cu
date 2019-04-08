@@ -325,12 +325,13 @@ void fused_lamb_cuda(
             AT_DISPATCH_FLOATING_TYPES_AND_HALF(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
                 using accscalar_t = at::acc_type<scalar_t, true>;
 
+
                 void *kernelArgs[] ={
-                        (void*)&p.data<accscalar_t>(),
-                        (void*)&(p_copy.numel() ? p_copy.data<scalar_t>() : NULL),
-                        (void*)&m.data<accscalar_t>(),
-                        (void*)&v.data<accscalar_t>(),
-                        (void*)&g.data<scalar_t>(),
+                        (void*)p.data<accscalar_t>(),
+                        (void*)(p_copy.numel() ? p_copy.data<scalar_t>() : NULL),
+                        (void*)m.data<accscalar_t>(),
+                        (void*)v.data<accscalar_t>(),
+                        (void*)g.data<scalar_t>(),
                         (void*)&beta1,
                         (void*)&beta2,
                         (void*)&eps,
@@ -339,8 +340,8 @@ void fused_lamb_cuda(
                         (void*)&tsize,
                         (void*)&(adamMode_t) mode,
                         (void*)&decay,
-                        (void*)&w_l2_i.data<accscalar_t>(),
-                        (void*)&u_l2_i.data<accscalar_t>()
+                        (void*)w_l2_i.data<accscalar_t>(),
+                        (void*)u_l2_i.data<accscalar_t>()
 
                 };
 
@@ -366,13 +367,13 @@ void fused_lamb_cuda(
             using namespace at;
             AT_DISPATCH_FLOATING_TYPES(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
 
-
+                scalar_t* nullptr = NULL
                 void *kernelArgs[] ={
-                    (void*)&p.data<scalar_t>(),
-                    (void*)&NULL,
-                    (void*)&m.data<scalar_t>(),
-                    (void*)&v.data<scalar_t>(),
-                    (void*)&g.data<scalar_t>(),
+                    (void*)p.data<scalar_t>(),
+                    (void*)&nullptr,
+                    (void*)m.data<scalar_t>(),
+                    (void*)v.data<scalar_t>(),
+                    (void*)g.data<scalar_t>(),
                     (void*)&beta1,
                     (void*)&beta2,
                     (void*)&eps,
@@ -381,8 +382,8 @@ void fused_lamb_cuda(
                     (void*)&tsize,
                     (void*)&(adamMode_t) mode,
                     (void*)&decay,
-                    (void*)&w_l2_i.data<accscalar_t>(),
-                    (void*)&u_l2_i.data<accscalar_t>()
+                    (void*)w_l2_i.data<accscalar_t>(),
+                    (void*)u_l2_i.data<accscalar_t>()
 
                 };
                 cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<scalar_t, scalar_t>, blocks, threads, kernelArgs, smemSize, stream);
