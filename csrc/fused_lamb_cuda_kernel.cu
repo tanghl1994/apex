@@ -172,7 +172,7 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::gri
 
     cg::sync(cgg);
 
-    if (blockId == 0){
+    if (blockIdx.x == 0){
         s_a[threadIdInBlock] = g_a[threadIdInBlock];
         s_b[threadIdInBlock] = g_b[threadIdInBlock];
 
