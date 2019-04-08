@@ -20,7 +20,6 @@ namespace cg = cooperative_groups;
 
 // Utility class used to avoid linker errors with extern
 // unsized shared memory arrays with templated type
-namespace{
 template<class T>
 struct SharedMemory
 {
@@ -55,7 +54,7 @@ struct SharedMemory<double>
         return (double *)__smem_d;
     }
 };
-}
+
 
 #include "type_shim.h"
 
