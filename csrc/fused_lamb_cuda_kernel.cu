@@ -176,7 +176,7 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::gri
         s_a[threadIdInBlock] = g_a[threadIdInBlock];
         s_b[threadIdInBlock] = g_b[threadIdInBlock];
 
-        if threadIdInBlock > cg::this_grid().size()
+        if (threadIdInBlock > cg::this_grid().size())
             s_a[threadIdInBlock] = 0.0;
             s_b[threadIdInBlock] = 0.0
 
