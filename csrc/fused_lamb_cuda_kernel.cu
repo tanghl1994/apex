@@ -214,12 +214,12 @@ __global__ void lamb_cuda_kernel(
         const int totThreads = gridDim.x*gridDim.y*threadsPerBlock;
         
 
-        float reg_w = 0;
-        float reg_u = 0;
+        T reg_w = 0;
+        T reg_u = 0;
         
         for (int j = i; j < tsize; j+=totThreads) {
                 T scaled_grad = g[j]/grad_scale;
-                float pj = (float)p[j];
+                T pj = p[j];
                 m[j] = b1*m[j] + (1-b1)*scaled_grad;
                 v[j] = b2*v[j] + (1-b2)*scaled_grad*scaled_grad;
                 float denom;
@@ -227,7 +227,7 @@ __global__ void lamb_cuda_kernel(
                     denom = sqrtf(v[j] + eps);
                 else // Mode 1
                     denom = sqrtf(v[j]) + eps;
-                float update = (m[j]/denom) + (decay*p[j]);
+                T update = (m[j]/denom) + (decay*p[j]);
                 
                 reg_u += update * update;
                 reg_w += pj * pj; 
@@ -245,15 +245,15 @@ __global__ void lamb_cuda_kernel(
             lamb_coeff = reg_w/reg_u;
     
         for (int j = i; j < tsize; j+=totThreads) {
-            float pj = (float)p[j];
-            float mj = m[j];
-            float vj = v[j];
+            T pj = (float)p[j];
+            T mj = m[j];
+            T vj = v[j];
             float denom;
             if (mode == ADAM_MODE_0)
                 denom = sqrtf(vj + eps);
             else // Mode 1
                 denom = sqrtf(vj) + eps;
-            float update = (mj/denom) + (decay*pj);
+            T update = (mj/denom) + (decay*pj);
             
             pj = pj - (step_size * lamb_coeff * update);
             p[j] = pj;
@@ -331,9 +331,6 @@ void fused_lamb_cuda(
             using namespace at; // prevents "toString is undefined" errors
             AT_DISPATCH_FLOATING_TYPES_AND_HALF(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
                 using accscalar_t = at::acc_type<scalar_t, true>;
-
-            
-
 
                 void *kernelArgs[] ={
                         (void*)p.data<accscalar_t>(),
