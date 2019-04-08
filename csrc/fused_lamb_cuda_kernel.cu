@@ -158,7 +158,7 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
 }
 
 template <typename T, int blockSize>
-__device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::group_grid &cgg){
+__device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::grid_group &cgg){
  
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
