@@ -316,6 +316,42 @@ void fused_lamb_cuda(
         }
         cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
+        void *kernelArgsSca[] ={
+            (void*)&p.data<scalar_t>(),
+            (void*)&(p_copy.numel() ? p_copy.data<scalar_t>() : NULL),
+            (void*)&m.data<scalar_t>(),
+            (void*)&v.data<scalar_t>(),
+            (void*)&g.data<scalar_t>(),
+            (void*)&beta1,
+            (void*)&beta2,
+            (void*)&eps,
+            (void*)&grad_scale,
+            (void*)&step_size,
+            (void*)&tsize,
+            (void*)&(adamMode_t) mode,
+            (void*)&decay,
+            (void*)&w_l2_i.data<accscalar_t>(),
+            (void*)&u_l2_i.data<accscalar_t>()
+
+    };
+
+        void *kernelArgsAcc[] ={
+            (void*)&p.data<accscalar_t>(),
+            (void*)&(p_copy.numel() ? p_copy.data<scalar_t>() : NULL),
+            (void*)&m.data<accscalar_t>(),
+            (void*)&v.data<accscalar_t>(),
+            (void*)&g.data<scalar_t>(),
+            (void*)&beta1,
+            (void*)&beta2,
+            (void*)&eps,
+            (void*)&grad_scale,
+            (void*)&step_size,
+            (void*)&tsize,
+            (void*)&(adamMode_t) mode,
+            (void*)&decay,
+            (void*)&w_l2_i.data<accscalar_t>(),
+            (void*)&u_l2_i.data<accscalar_t>()};
+
         if (g.type().scalarType() == at::ScalarType::Half) {
 //all other values should be fp32 for half gradients
             AT_ASSERTM(p.type().scalarType() == at::ScalarType::Float, "expected parameter to be of float type");
@@ -324,26 +360,9 @@ void fused_lamb_cuda(
             AT_DISPATCH_FLOATING_TYPES_AND_HALF(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
                 using accscalar_t = at::acc_type<scalar_t, true>;
 
-                void *kernelArgs[] ={
-                        (void*)&p.data<accscalar_t>(),
-                        (void*)&(p_copy.numel() ? p_copy.data<scalar_t>() : NULL),
-                        (void*)&m.data<accscalar_t>(),
-                        (void*)&v.data<accscalar_t>(),
-                        (void*)&g.data<scalar_t>(),
-                        (void*)&beta1,
-                        (void*)&beta2,
-                        (void*)&eps,
-                        (void*)&grad_scale,
-                        (void*)&step_size,
-                        (void*)&tsize,
-                        (void*)&(adamMode_t) mode,
-                        (void*)&decay,
-                        (void*)&w_l2_i.data<accscalar_t>(),
-                        (void*)&u_l2_i.data<accscalar_t>()
+                
 
-                };
-
-                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<accscalar_t, scalar_t>, blocks, threads, kernelArgs, smemSize, stream);
+                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<accscalar_t, scalar_t>, blocks, threads, kernelArgsAcc, smemSize, stream);
                 /*lamb_cuda_kernel<accscalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<accscalar_t>(),
                         p_copy.numel() ? p_copy.data<scalar_t>() : NULL,
@@ -365,26 +384,7 @@ void fused_lamb_cuda(
             using namespace at;
             AT_DISPATCH_FLOATING_TYPES(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
 
-
-                void *kernelArgs[] ={
-                    (void*)&p.data<scalar_t>(),
-                    (void*)&NULL,
-                    (void*)&m.data<scalar_t>(),
-                    (void*)&v.data<scalar_t>(),
-                    (void*)&g.data<scalar_t>(),
-                    (void*)&beta1,
-                    (void*)&beta2,
-                    (void*)&eps,
-                    (void*)&grad_scale,
-                    (void*)&step_size,
-                    (void*)&tsize,
-                    (void*)&(adamMode_t) mode,
-                    (void*)&decay,
-                    (void*)&w_l2_i.data<accscalar_t>(),
-                    (void*)&u_l2_i.data<accscalar_t>()
-
-                };
-                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<scalar_t, scalar_t>, blocks, threads, kernelArgs, smemSize, stream);
+                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<scalar_t, scalar_t>, blocks, threads, kernelArgsSca, smemSize, stream);
                 /*lamb_cuda_kernel<scalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<scalar_t>(),
                         NULL, //don't output p_copy for fp32, it's wasted write
