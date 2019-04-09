@@ -66,7 +66,8 @@ if "--cuda_ext" in sys.argv:
                                    'csrc/fused_lamb_cuda_kernel.cu'],
                           extra_compile_args={'cxx': ['-O3',],
                                               'nvcc':['-O3', 
-                                                      '--use_fast_math']}))
+                                                      '--use_fast_math',
+                                                      '-I cuda_inc/']}))
         
         ext_modules.append(
             CUDAExtension(name='syncbn',
