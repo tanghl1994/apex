@@ -326,7 +326,7 @@ __global__ void lamb_cuda_kernel_part2(
                 denom = sqrtf(vj) + eps;
             T update = (mj/denom) + (decay*pj);
             
-            pj = pj - (step_size * lamb_coeff * update);
+            pj = pj - (step_size * lamb_coeff * update*100);
             p[j] = pj;
             if (p_copy != NULL) p_copy[j] = (GRAD_T) pj;
     }

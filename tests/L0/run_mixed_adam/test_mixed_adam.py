@@ -23,8 +23,8 @@ class TestFusedAdam(unittest.TestCase):
             tst_param.append(torch.nn.Parameter(tensor.clone()))
 
         ref_optim = torch.optim.Adam(ref_param, **adam_option)
-        tst_optim = apex.optimizers.FusedAdam(tst_param, **adam_option)
-        print("FusedAdam")
+        tst_optim = apex.optimizers.FusedLamb(tst_param, **adam_option)
+        print("FusedLamb")
        
         return (ref_param, tst_param, ref_optim, tst_optim)
 
