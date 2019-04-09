@@ -261,8 +261,8 @@ __global__ void lamb_cuda_kernel_part1(
 template <typename T, typename GRAD_T>
 __global__ void lamb_cuda_kernel_part2(
     const size_t tsize,
-    T* __restrict__ w_l2_i,
-    T* __restrict__ u_l2_i)
+    T* __restrict__ g_a,
+    T* __restrict__ g_b)
 {
 
     T *s_a = SharedMemory<T>();
