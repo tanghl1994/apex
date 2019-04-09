@@ -63,8 +63,6 @@ typedef enum{
     ADAM_MODE_1   =1  // eps outside square root
 } adamMode_t;
 
-static int sm_count=-1;
-static int num_blocks_per_sm=-1;
 
 //s_a and s_b are in shared memory
 //g_a and g_b are in shared memory
@@ -266,6 +264,10 @@ __global__ void lamb_cuda_kernel_part2(
     T* __restrict__ w_l2_i,
     T* __restrict__ u_l2_i)
 {
+
+    T *s_a = SharedMemory<T>();
+    T *s_b = SharedMemory<T>();
+
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
     s_a[threadIdInBlock] = g_a[threadIdInBlock];
@@ -275,7 +277,7 @@ __global__ void lamb_cuda_kernel_part2(
         s_a[threadIdInBlock] = 0.0;
         s_b[threadIdInBlock] = 0.0;
 
-    reduce_block_in_shared_memory<T,blockSize>(s_a, s_b, g_a, g_b);
+    reduce_block_in_shared_memory<T,512>(s_a, s_b, g_a, g_b);
 }
 
     
@@ -298,6 +300,13 @@ __global__ void lamb_cuda_kernel_part2(
         T* __restrict__ u_l2_i)
 {
 
+        //Assuming 2D grids and 2D blocks
+        const int blockId = gridDim.x * blockIdx.y + blockIdx.x;
+        const int threadsPerBlock = blockDim.x * blockDim.y;
+        const int threadIdInBlock = threadIdx.y * blockDim.x + threadIdx.x;
+        const int i = (blockId * threadsPerBlock + threadIdInBlock);
+        const int totThreads = gridDim.x*gridDim.y*threadsPerBlock;
+        
         T reg_w = sqrtf(w_l2_i[0]);
         T reg_u = sqrtf(u_l2_i[0]);
 
@@ -367,13 +376,6 @@ void fused_lamb_cuda(
         }
         cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
-        float lbeta1 = beta1;
-        float lbeta2 = beta2;
-        float leps = eps;
-        float lgrad_scale = grad_scale;
-        int lmode = mode;
-        float ldecay=decay;
-
         if (g.type().scalarType() == at::ScalarType::Half) {
 //all other values should be fp32 for half gradients
             AT_ASSERTM(p.type().scalarType() == at::ScalarType::Float, "expected parameter to be of float type");
@@ -439,13 +441,13 @@ void fused_lamb_cuda(
                         tsize,
                         (adamMode_t) mode,
                         decay,
-                        w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
+                        w_l2_i.data<scalar_t>(),
+                        u_l2_i.data<scalar_t>());
 
                  lamb_cuda_kernel_part2<scalar_t, scalar_t><<<1,threadsPerBlock, smemsize, stream>>>(
                         num_blocks,
-                        w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
+                        w_l2_i.data<scalar_t>(),
+                        u_l2_i.data<scalar_t>());
 
                  lamb_cuda_kernel_part3<scalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<scalar_t>(),
@@ -461,8 +463,8 @@ void fused_lamb_cuda(
                         tsize,
                         (adamMode_t) mode,
                         decay,
-                        w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
+                        w_l2_i.data<scalar_t>(),
+                        u_l2_i.data<scalar_t>());
             }));
       }
       THCudaCheck(cudaGetLastError());
