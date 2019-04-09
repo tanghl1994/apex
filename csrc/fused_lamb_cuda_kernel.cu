@@ -15,6 +15,7 @@
 #include <helper_functions.h>
 #include <cuda_runtime_api.h>
 #include <cooperative_groups.h>
+#include <stdio.h>
 
 namespace cg = cooperative_groups;
 
@@ -314,6 +315,9 @@ __global__ void lamb_cuda_kernel_part2(
 
         if (reg_w !=0 and reg_u !=0)
             lamb_coeff = reg_w/reg_u;
+
+        if(blockId == 0)
+            printf("Hello World");
     
         for (int j = i; j < tsize; j+=totThreads) {
             T pj = (float)p[j];
