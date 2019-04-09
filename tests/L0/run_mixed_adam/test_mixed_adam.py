@@ -176,8 +176,8 @@ class TestFusedAdam(unittest.TestCase):
 
         for i in range(self.iters):
             half_grads = self.gen_mixed_grad_fixed(ref_param, tst_param)
-            ref_norm = torch.norm(ref_param,p=2)
-            tst_norm = torch.norm(tst_param,p=2)
+            ref_norm = torch.norm(ref_param,p=2,dim=None)
+            tst_norm = torch.norm(tst_param,p=2,dim=None)
             print("Ref Norm ", ref_norm, "Test Norm", tst_norm)
             ref_optim.step()
             tst_optim.step(grads=half_grads, output_params=[fp16_param])
