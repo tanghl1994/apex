@@ -43,9 +43,7 @@ class TestFusedAdam(unittest.TestCase):
     def gen_mixed_grad_fixed(self, ref_param, tst_param, scale=1.0):
         half_grads = []
         for p_ref, p_tst in zip(ref_param, tst_param):
-            tmp = torch.ones(p_ref.size())
-            tmp = tmp.new_full(p_ref.size(),0.5)
-            half_grads.append(tmp.half())
+            half_grads.append(torch.rand_like(p_ref).half()
             p_ref.grad = half_grads[-1].float() / scale
         return half_grads 
 
