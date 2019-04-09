@@ -24,7 +24,7 @@ class TestFusedAdam(unittest.TestCase):
 
         ref_optim = torch.optim.Adam(ref_param, **adam_option)
         tst_optim = apex.optimizers.FusedAdam(tst_param, **adam_option)
-        print("FusedLAMB")
+        print("FusedAdam")
        
         return (ref_param, tst_param, ref_optim, tst_optim)
 
