@@ -209,7 +209,7 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b){
 }
 
 
-template <typename T, typename GRAD_T, int blocksSize>
+template <typename T, typename GRAD_T, int blockSize>
 __global__ void lamb_cuda_kernel_part1(
         T* __restrict__ p,
         GRAD_T* __restrict__ p_copy, // For mixed precision training, pass NULL if not needed
@@ -401,7 +401,7 @@ void fused_lamb_cuda(
                         w_l2_i.data<accscalar_t>(),
                         u_l2_i.data<accscalar_t>());
 
-                    lamb_cuda_kernel_part2<accscalar_t, scalar_t, threasdPerBlock><<<1,threadsPerBlock, smemsize, stream>>>(
+                    lamb_cuda_kernel_part2<accscalar_t, scalar_t, threadsPerBlock><<<1,threadsPerBlock, smemsize, stream>>>(
                         num_blocks,
                         w_l2_i.data<accscalar_t>(),
                         u_l2_i.data<accscalar_t>());
