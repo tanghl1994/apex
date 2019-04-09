@@ -40,6 +40,13 @@ class TestFusedAdam(unittest.TestCase):
             p_ref.grad = half_grads[-1].float() / scale
         return half_grads
 
+    def gen_mixed_grad_ones(self, ref_param, tst_param, scale=1.0):
+        half_grads = []
+        for p_ref, p_tst in zip(ref_param, tst_param):
+            half_grads.append(0.5*torch.ones(p_ref.size()).half())
+            p_ref.grad = half_grads[-1].float() / scale
+        return half_grads 
+
     def get_max_diff(self, ref_param, tst_param):
         max_abs_diff = max_rel_diff = 0
         for p_ref, p_tst in zip(ref_param, tst_param):
@@ -161,7 +168,7 @@ class TestFusedAdam(unittest.TestCase):
         adam_option = {'lr':5e-4, 'betas':(0.9, 0.999), 'eps':1e-08,
             'weight_decay':0, 'amsgrad':False}
 
-        tensor = torch.rand(nelem, dtype=torch.float, device='cuda')
+        tensor = torch.ones(nelem, dtype=torch.float, device='cuda')
         ref_param, tst_param, ref_optim, tst_optim = \
             self.gen_param_optim([tensor], adam_option)
 
