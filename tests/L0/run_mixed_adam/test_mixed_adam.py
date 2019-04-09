@@ -179,6 +179,7 @@ class TestFusedAdam(unittest.TestCase):
             ref_norm = torch.norm(ref_param[0])
             tst_norm = torch.norm(tst_param[0])
             print("Ref: ", ref_param[0], " Ref Norm ", ref_norm.item(), "Test Norm", tst_norm.item())
+            
             ref_optim.step()
             tst_optim.step(grads=half_grads, output_params=[fp16_param])
 
