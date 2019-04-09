@@ -157,7 +157,7 @@ class TestFusedAdam(unittest.TestCase):
             self.assertLessEqual(max_rel_diff, self.max_rel_diff)
 
     def test_lamb(self):
-        nelem = 278011
+        nelem = 512
         adam_option = {'lr':5e-4, 'betas':(0.9, 0.999), 'eps':1e-08,
             'weight_decay':0, 'amsgrad':False}
 
