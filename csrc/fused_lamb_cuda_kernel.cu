@@ -317,7 +317,7 @@ __global__ void lamb_cuda_kernel_part2(
             lamb_coeff = reg_w/reg_u;
 
         if(blockId == 0)
-            printf("Layer Size: %d Lamb Coeff %.3f \n",tsize, lamb_coeff);
+            printf("Layer Size: %d Lamb Coeff %.3f. Numerator %.3f. Dinominator %.3f \n",tsize, lamb_coeff, reg_w, reg_u);
     
         for (int j = i; j < tsize; j+=totThreads) {
             T pj = (float)p[j];
