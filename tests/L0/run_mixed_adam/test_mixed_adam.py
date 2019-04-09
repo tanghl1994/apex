@@ -164,7 +164,7 @@ class TestFusedAdam(unittest.TestCase):
             self.assertLessEqual(max_rel_diff, self.max_rel_diff)
 
     def test_lamb(self):
-        nelem = 512
+        nelem = 10
         adam_option = {'lr':5e-4, 'betas':(0.9, 0.999), 'eps':1e-08,
             'weight_decay':0, 'amsgrad':False}
 
@@ -176,9 +176,9 @@ class TestFusedAdam(unittest.TestCase):
 
         for i in range(self.iters):
             half_grads = self.gen_mixed_grad_fixed(ref_param, tst_param)
-            ref_norm = torch.norm(ref_param,p=2,dim=None)
-            tst_norm = torch.norm(tst_param,p=2,dim=None)
-            print("Ref Norm ", ref_norm, "Test Norm", tst_norm)
+            ref_norm = torch.norm(ref_param[0],p=2,dim=None)
+            tst_norm = torch.norm(tst_param[0],p=2,dim=None)
+            print("Ref Norm ", ref_norm.item(), "Test Norm", tst_norm.item())
             ref_optim.step()
             tst_optim.step(grads=half_grads, output_params=[fp16_param])
 
