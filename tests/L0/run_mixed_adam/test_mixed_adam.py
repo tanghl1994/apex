@@ -6,7 +6,7 @@ import torch
 import apex
 
 class TestFusedAdam(unittest.TestCase):
-    def setUp(self, max_abs_diff=1e-3, max_rel_diff=1, iters=7):
+    def setUp(self, max_abs_diff=1e-3, max_rel_diff=1, iters=1):
         self.max_abs_diff = max_abs_diff
         self.max_rel_diff = max_rel_diff
         self.iters = iters
