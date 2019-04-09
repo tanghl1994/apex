@@ -358,6 +358,7 @@ void fused_lamb_cuda(
 
         //Get tensor size
         int tsize = p.numel();
+        printf("Parameter Size is %d \n",tsize);
         //Determine #threads and #blocks
         const int threadsPerBlock = 512;
         int num_blocks = (tsize+threadsPerBlock-1)/threadsPerBlock;
