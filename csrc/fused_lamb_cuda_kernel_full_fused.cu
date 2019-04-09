@@ -196,7 +196,7 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
 }
 
 template <typename T, int blockSize>
-__device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b){
+__device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b, cg::grid_group &cgg){
  
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
@@ -208,11 +208,24 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b){
 
     reduce_block_in_shared_memory<T,blockSize>(s_a, s_b ,g_a, g_b);
 
+    cg::sync(cgg);
+
+    if (cgg.thread_rank() == 0){
+        s_a[threadIdInBlock] = g_a[threadIdInBlock];
+        s_b[threadIdInBlock] = g_b[threadIdInBlock];
+
+        if (threadIdInBlock > cg::this_grid().size())
+            s_a[threadIdInBlock] = 0.0;
+            s_b[threadIdInBlock] = 0.0;
+
+        reduce_block_in_shared_memory<T,blockSize>(s_a, s_b, g_a, g_b);
+    }
+    cg::sync(cgg);
+
 }
 
-
 template <typename T, typename GRAD_T>
-__global__ void lamb_cuda_kernel_part1(
+__global__ void lamb_cuda_kernel(
         T* __restrict__ p,
         GRAD_T* __restrict__ p_copy, // For mixed precision training, pass NULL if not needed
         T* __restrict__ m,
@@ -229,6 +242,8 @@ __global__ void lamb_cuda_kernel_part1(
         T* __restrict__ w_l2_i,
         T* __restrict__ u_l2_i)
 {
+        cg::grid_group cgg = cg::this_grid();
+
         //Assuming 2D grids and 2D blocks
         const int blockId = gridDim.x * blockIdx.y + blockIdx.x;
         const int threadsPerBlock = blockDim.x * blockDim.y;
@@ -257,49 +272,10 @@ __global__ void lamb_cuda_kernel_part1(
                 
         }
 
-        reduce_two_vectors_in_register<T,512>(reg_w, reg_u, w_l2_i, u_l2_i);
-}
-
-template <typename T, typename GRAD_T>
-__global__ void lamb_cuda_kernel_part2(
-    const size_t tsize,
-    T* __restrict__ w_l2_i,
-    T* __restrict__ u_l2_i)
-{
-    const int threadIdInBlock = cg::this_thread_block().thread_rank();
-
-    s_a[threadIdInBlock] = g_a[threadIdInBlock];
-    s_b[threadIdInBlock] = g_b[threadIdInBlock];
-
-    if (threadIdInBlock >= tsize)
-        s_a[threadIdInBlock] = 0.0;
-        s_b[threadIdInBlock] = 0.0;
-
-    reduce_block_in_shared_memory<T,blockSize>(s_a, s_b, g_a, g_b);
-}
-
-    
-    template <typename T, typename GRAD_T>
-    __global__ void lamb_cuda_kernel_part3(
-        T* __restrict__ p,
-        GRAD_T* __restrict__ p_copy, // For mixed precision training, pass NULL if not needed
-        T* __restrict__ m,
-        T* __restrict__ v,
-        const GRAD_T * __restrict__ g,
-        const float b1,
-        const float b2,
-        const float eps,
-        const float grad_scale,
-        const float step_size,
-        const size_t tsize,
-        adamMode_t mode,
-        const float decay,
-        T* __restrict__ w_l2_i,
-        T* __restrict__ u_l2_i)
-{
-
-        T reg_w = sqrtf(w_l2_i[0]);
-        T reg_u = sqrtf(u_l2_i[0]);
+        reduce_two_vectors_in_register<T,512>(reg_w, reg_u, w_l2_i, u_l2_i, cgg);
+        
+        reg_w = sqrtf(w_l2_i[0]);
+        reg_u = sqrtf(u_l2_i[0]);
 
         float lamb_coeff = 1.0;
 
@@ -350,6 +326,18 @@ void fused_lamb_cuda(
         int num_blocks = (tsize+threadsPerBlock-1)/threadsPerBlock;
         if (num_blocks > 512) num_blocks=512;
         int smemsize = 2 * threadsPerBlock * sizeof(float);
+        
+        if (sm_count == -1){
+            cudaDeviceProp prop;
+            cudaGetDeviceProperties(&prop,0);
+            sm_count = prop.multiProcessorCount;
+            
+            cudaOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks_per_sm, lamb_cuda_kernel<float,float>, threadsPerBlock, smemsize );
+        }
+
+        int max_active_blocks = num_blocks_per_sm * sm_count;
+        if (num_blocks > max_active_blocks) num_blocks = max_active_blocks;
+        std::cout<<"Num Blocks, Num Threads "<<num_blocks<<", "<<threadsPerBlock<<std::endl;
 
         const dim3 blocks(num_blocks);
         const dim3 threads(threadsPerBlock);
@@ -382,7 +370,27 @@ void fused_lamb_cuda(
             AT_DISPATCH_FLOATING_TYPES_AND_HALF(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
                 using accscalar_t = at::acc_type<scalar_t, true>;
 
-                lamb_cuda_kernel_part1<accscalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
+                void *kernelArgs[] ={
+                        (void*)p.data<accscalar_t>(),
+                        (void*)(p_copy.numel() ? p_copy.data<scalar_t>() : NULL),
+                        (void*)m.data<accscalar_t>(),
+                        (void*)v.data<accscalar_t>(),
+                        (void*)g.data<scalar_t>(),
+                        (void*)&lbeta1,
+                        (void*)&lbeta2,
+                        (void*)&leps,
+                        (void*)&lgrad_scale,
+                        (void*)&step_size,
+                        (void*)&tsize,
+                        (void*)&lmode,
+                        (void*)&ldecay,
+                        (void*)w_l2_i.data<accscalar_t>(),
+                        (void*)u_l2_i.data<accscalar_t>()
+
+                };
+
+                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<accscalar_t, scalar_t>, blocks, threads, kernelArgs, smemsize, stream);
+                /*lamb_cuda_kernel<accscalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<accscalar_t>(),
                         p_copy.numel() ? p_copy.data<scalar_t>() : NULL,
                         m.data<accscalar_t>(),
@@ -397,35 +405,33 @@ void fused_lamb_cuda(
                         (adamMode_t) mode,
                         decay,
                         w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
-
-                    lamb_cuda_kernel_part2<accscalar_t, scalar_t><<<1,threadsPerBlock, smemsize, stream>>>(
-                        num_blocks,
-                        w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
-
-                     lamb_cuda_kernel_part3<accscalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
-                        p.data<accscalar_t>(),
-                        p_copy.numel() ? p_copy.data<scalar_t>() : NULL,
-                        m.data<accscalar_t>(),
-                        v.data<accscalar_t>(),
-                        g.data<scalar_t>(),
-                        beta1,
-                        beta2,
-                        eps,
-                        grad_scale,
-                        step_size,
-                        tsize,
-                        (adamMode_t) mode,
-                        decay,
-                        w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
+                        u_l2_i.data<accscalar_t>());*/
             }));
       } else {
             using namespace at;
             AT_DISPATCH_FLOATING_TYPES(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
 
-                lamb_cuda_kernel_part1<scalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
+                scalar_t* nullptr1 = NULL;
+                void *kernelArgs[] ={
+                    (void*)p.data<scalar_t>(),
+                    (void*)&nullptr1,
+                    (void*)m.data<scalar_t>(),
+                    (void*)v.data<scalar_t>(),
+                    (void*)g.data<scalar_t>(),
+                    (void*)&lbeta1,
+                    (void*)&lbeta2,
+                    (void*)&leps,
+                    (void*)&lgrad_scale,
+                    (void*)&step_size,
+                    (void*)&tsize,
+                    (void*)&lmode,
+                    (void*)&ldecay,
+                    (void*)w_l2_i.data<scalar_t>(),
+                    (void*)u_l2_i.data<scalar_t>()
+
+                };
+                cudaLaunchCooperativeKernel((void*)lamb_cuda_kernel<scalar_t, scalar_t>, blocks, threads, kernelArgs, smemsize, stream);
+                /*lamb_cuda_kernel<scalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<scalar_t>(),
                         NULL, //don't output p_copy for fp32, it's wasted write
                         m.data<scalar_t>(),
@@ -440,29 +446,7 @@ void fused_lamb_cuda(
                         (adamMode_t) mode,
                         decay,
                         w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
-
-                 lamb_cuda_kernel_part2<scalar_t, scalar_t><<<1,threadsPerBlock, smemsize, stream>>>(
-                        num_blocks,
-                        w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
-
-                 lamb_cuda_kernel_part3<scalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
-                        p.data<scalar_t>(),
-                        NULL, //don't output p_copy for fp32, it's wasted write
-                        m.data<scalar_t>(),
-                        v.data<scalar_t>(),
-                        g.data<scalar_t>(),
-                        beta1,
-                        beta2,
-                        eps,
-                        grad_scale,
-                        step_size,
-                        tsize,
-                        (adamMode_t) mode,
-                        decay,
-                        w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
+                        u_l2_i.data<accscalar_t>());*/
             }));
       }
       THCudaCheck(cudaGetLastError());
