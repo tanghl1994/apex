@@ -364,7 +364,7 @@ void fused_lamb_cuda(
         int num_blocks = (tsize+threadsPerBlock-1)/threadsPerBlock;
         if (num_blocks > 512) num_blocks=512;
         int smemsize = 2 * threadsPerBlock * sizeof(float);
-
+        printf("Num blocks is %d \n",num_blocks);
         const dim3 blocks(num_blocks);
         const dim3 threads(threadsPerBlock);
 
