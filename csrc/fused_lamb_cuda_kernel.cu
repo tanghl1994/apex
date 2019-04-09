@@ -317,7 +317,7 @@ __global__ void lamb_cuda_kernel_part2(
             lamb_coeff = reg_w/reg_u;
 
         if(blockId == 0)
-            printf("Hello World");
+            printf("Layer Size: %d Lamb Coeff %.3f \n",tsize, lamb_coeff);
     
         for (int j = i; j < tsize; j+=totThreads) {
             T pj = (float)p[j];
@@ -330,7 +330,7 @@ __global__ void lamb_cuda_kernel_part2(
                 denom = sqrtf(vj) + eps;
             T update = (mj/denom) + (decay*pj);
             
-            pj = pj - (step_size * lamb_coeff * update*100);
+            pj = pj - (step_size * lamb_coeff * update);
             p[j] = pj;
             if (p_copy != NULL) p_copy[j] = (GRAD_T) pj;
     }
