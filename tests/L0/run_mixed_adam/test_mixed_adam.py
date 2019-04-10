@@ -43,7 +43,7 @@ class TestFusedAdam(unittest.TestCase):
     def gen_mixed_grad_fixed(self, ref_param, tst_param, scale=1.0):
         half_grads = []
         for p_ref, p_tst in zip(ref_param, tst_param):
-            half_grads.append(torch.rand_like(p_ref).half())
+            half_grads.append(torch.ones(p_ref.shape()).half())
             p_ref.grad = half_grads[-1].float() / scale
         return half_grads 
 
@@ -175,7 +175,7 @@ class TestFusedAdam(unittest.TestCase):
         fp16_param = torch.nn.Parameter(tensor.clone().half())
 
         for i in range(self.iters):
-            half_grads = self.gen_mixed_grad_fixed(ref_param, tst_param)
+            half_grads = self.gen_mixed_grad_fixed(ref_param, tst_param,scale=0.5)
             ref_norm = torch.norm(ref_param[0])
             tst_norm = torch.norm(tst_param[0])
             print("Ref: ", ref_param[0], " Ref Norm ", ref_norm.item(), "Test Norm", tst_norm.item())
