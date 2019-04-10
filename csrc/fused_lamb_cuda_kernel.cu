@@ -239,7 +239,7 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b){
 
     s_a[threadIdInBlock] = a;
     s_b[threadIdInBlock] = b;
-
+    __syncthreads();
     if (threadIdInBlock == 0){
         printf("Register function a %.3f. b %.3f \n",a, b);
         printf("Register function from shared memory %.3f. b %.3f \n",s_a[0], s_b[0]);
