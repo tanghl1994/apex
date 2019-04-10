@@ -4,7 +4,7 @@ import random
 
 import torch
 import apex
-from lamb import Lamb
+
 
 class TestFusedAdam(unittest.TestCase):
     def setUp(self, max_abs_diff=1e-3, max_rel_diff=1, iters=1):
