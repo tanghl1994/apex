@@ -312,7 +312,7 @@ __global__ void lamb_cuda_kernel_part2(
 {
 
     T *s_a = SharedMemory<T>() ;
-    T *s_b = SharedMemory<T>() + cg::this_thread_blocks().size();
+    T *s_b = SharedMemory<T>() + cg::this_thread_block().size();
 
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
