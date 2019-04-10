@@ -259,7 +259,7 @@ __global__ void lamb_cuda_kernel_part1(
 
         if(blockId == 0 and threadIdInBlock < 10){
             printf("Thread ID %d. Reg W %.3f. Reg U %.3f \n",threadIdInBlock, reg_w, reg_u);
-            printf("Thread ID %d. m %.3f. v %.3f. p %.3f s %.3f\n",threadIdInBlock, m[i], v[i], p[i], g[in]/grad_scale);
+            printf("Thread ID %d. m %.3f. v %.3f. p %.3f s %.3f\n",threadIdInBlock, m[i], v[i], p[i], g[i]/grad_scale);
         }
 
         reduce_two_vectors_in_register<T,blockSize>(reg_w, reg_u, w_l2_i, u_l2_i);
