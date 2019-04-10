@@ -4,6 +4,7 @@ import random
 
 import torch
 import apex
+from lamb import Lamb
 
 
 class TestFusedAdam(unittest.TestCase):
@@ -23,8 +24,8 @@ class TestFusedAdam(unittest.TestCase):
             ref_param.append(torch.nn.Parameter(tensor.clone()))
             tst_param.append(torch.nn.Parameter(tensor.clone()))
 
-        ref_optim = torch.optim.Adam(ref_param, **adam_option)
-        #ref_optim = Lamb(ref_param, **adam_option)
+        #ref_optim = torch.optim.Adam(ref_param, **adam_option)
+        ref_optim = Lamb(ref_param, **adam_option)
         tst_optim = apex.optimizers.FusedLamb(tst_param, **adam_option)
         print("FusedLamb")
        
