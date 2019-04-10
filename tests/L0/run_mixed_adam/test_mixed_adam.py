@@ -3,7 +3,7 @@ import os
 import random
 
 import torch
-import apex
+from .lamb import Lamb
 
 class TestFusedAdam(unittest.TestCase):
     def setUp(self, max_abs_diff=1e-3, max_rel_diff=1, iters=1):
@@ -24,7 +24,7 @@ class TestFusedAdam(unittest.TestCase):
 
         #ref_optim = torch.optim.Adam(ref_param, **adam_option)
         ref_optim = apex.optimizers.Lamb(ref_param, **adam_option)
-        tst_optim = apex.optimizers.FusedLamb(tst_param, **adam_option)
+        tst_optim = Lamb(tst_param, **adam_option)
         print("FusedLamb")
        
         return (ref_param, tst_param, ref_optim, tst_optim)
