@@ -22,7 +22,8 @@ class TestFusedAdam(unittest.TestCase):
             ref_param.append(torch.nn.Parameter(tensor.clone()))
             tst_param.append(torch.nn.Parameter(tensor.clone()))
 
-        ref_optim = torch.optim.Adam(ref_param, **adam_option)
+        #ref_optim = torch.optim.Adam(ref_param, **adam_option)
+        ref_optim = apex.optimizers.Lamb(ref_param, **adam_option)
         tst_optim = apex.optimizers.FusedLamb(tst_param, **adam_option)
         print("FusedLamb")
        
@@ -178,7 +179,7 @@ class TestFusedAdam(unittest.TestCase):
             half_grads = self.gen_mixed_grad_fixed(ref_param, tst_param,scale=0.5)
             ref_norm = torch.norm(ref_param[0])
             tst_norm = torch.norm(tst_param[0])
-            print("Ref: ", ref_param[0], " Ref Norm ", ref_norm.item(), "Test Norm", tst_norm.item())
+            #print("Ref: ", ref_param[0], " Ref Norm ", ref_norm.item(), "Test Norm", tst_norm.item())
             
             ref_optim.step()
             tst_optim.step(grads=half_grads, output_params=[fp16_param])
