@@ -106,8 +106,8 @@ class Lamb(torch.optim.Optimizer):
 
                 update = exp_avg/denom
                 print(p)
-                w_l2 = torch.norm(p).sqrt()
-                u_l2 = torch.norm(update).sqrt()
+                w_l2 = torch.norm(p)
+                u_l2 = torch.norm(update)
                 lamb_coeff = w_l2/u_l2
                 lamb_coeff = lamb_coeff.item()
 
