@@ -298,8 +298,8 @@ __global__ void lamb_cuda_kernel_part1(
                 
         }
 
-        if(blockId == 0 and threadIdInBlock == 0)
-            printf("Reg W %.3f. Reg U %.3f \n",reg_w, reg_u);
+        if(blockId == 0 and threadIdInBlock < tsize)
+            printf("Thread ID %d. Reg W %.3f. Reg U %.3f \n",threadIdInBlock, reg_w, reg_u);
     
         reduce_two_vectors_in_register<T,blockSize>(reg_w, reg_u, w_l2_i, u_l2_i);
 }
