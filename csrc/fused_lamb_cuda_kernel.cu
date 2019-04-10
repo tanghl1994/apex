@@ -154,7 +154,7 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
         for (int offset = warpSize/2; offset > 0; offset /= 2) 
         {
              a_sum += active.shfl_down(a_sum, offset);
-             b_sum += active.shfl_down(a_sum, offset);
+             b_sum += active.shfl_down(b_sum, offset);
 
              if (tid == 0){
                 printf("Loaded from shared a_sum %.3f. b_sum %.3f \n",a_sum, b_sum);
@@ -239,14 +239,12 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b){
 
     s_a[threadIdInBlock] = a;
     s_b[threadIdInBlock] = b;
-    __syncthreads();
+  
     if (threadIdInBlock == 0){
         printf("Register function a %.3f. b %.3f \n",a, b);
         printf("Register function from shared memory %.3f. b %.3f \n",s_a[0], s_b[0]);
     
-    } 
-    __syncthreads();
-
+    }
     reduce_block_in_shared_memory<T,blockSize>(s_a, s_b ,g_a, g_b);
 
 }
