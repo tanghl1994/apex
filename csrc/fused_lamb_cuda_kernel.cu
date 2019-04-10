@@ -191,6 +191,8 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
     if (tid == 0){
         g_a[blockIdx.x] = a_sum;
         g_b[blockIdx.x] = b_sum;
+        printf("Reduce Block in Shared memory g_a %.3f. g_b %.3f \n",a_sum, b_sum);
+    
     } 
 }
 
@@ -280,6 +282,9 @@ __global__ void lamb_cuda_kernel_part2(
     if (threadIdInBlock >= tsize)
         s_a[threadIdInBlock] = 0.0;
         s_b[threadIdInBlock] = 0.0;
+
+    if(threadIdInBlock == 0)
+        printf("About to reduce block in shared memory");
 
     reduce_block_in_shared_memory<T,blockSize>(s_a, s_b, g_a, g_b);
 }
