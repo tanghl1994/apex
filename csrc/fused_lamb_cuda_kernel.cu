@@ -69,7 +69,7 @@ typedef enum{
 //g_a and g_b are in shared memory
 template <typename T, int blockSize>
 __device__ void
-reduce_block_in_shared_memory(float *s_a, float *s_b, T* g_a, T* g_b)
+reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
 {
     // Handle to thread block group
     cg::thread_block cta = cg::this_thread_block();
@@ -233,12 +233,12 @@ template <typename T, int blockSize>
 __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b){
  
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
+    
+    T *s_a = SharedMemory<T>();
+    T *s_b = SharedMemory<T>() + cg::this_thread_block().size();
 
-    float *s_a = SharedMemory<float>();
-    float *s_b = SharedMemory<float>() + blockDim.x * blockDim.y;
-
-    s_a[threadIdInBlock] = (float)a;
-    s_b[threadIdInBlock] = (float)b;
+    s_a[threadIdInBlock] = a;
+    s_b[threadIdInBlock] = b;
     __syncthreads();
     if (threadIdInBlock == 0){
         printf("Register function a %.3f. b %.3f \n",a, b);
