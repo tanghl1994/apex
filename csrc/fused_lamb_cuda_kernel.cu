@@ -69,7 +69,7 @@ typedef enum{
 //g_a and g_b are in shared memory
 template <typename T, int blockSize>
 __device__ void
-reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
+reduce_block_in_shared_memory(float *s_a, float *s_b, T* g_a, T* g_b)
 {
     // Handle to thread block group
     cg::thread_block cta = cg::this_thread_block();
@@ -222,8 +222,8 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
 
     // write result for this block to global mem
     if (tid == 0){
-        g_a[blockIdx.x] = a_sum;
-        g_b[blockIdx.x] = b_sum;
+        g_a[blockIdx.x] = (T)a_sum;
+        g_b[blockIdx.x] = (T)b_sum;
         printf("Reduce Block in Shared memory g_a %.3f. g_b %.3f \n",a_sum, b_sum);
     
     } 
@@ -234,11 +234,11 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b){
  
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
-    T *s_a = SharedMemory<T>();
-    T *s_b = SharedMemory<T>();
+    float *s_a = SharedMemory<float>();
+    float *s_b = SharedMemory<float>();
 
-    s_a[threadIdInBlock] = a;
-    s_b[threadIdInBlock] = b;
+    s_a[threadIdInBlock] = (float)a;
+    s_b[threadIdInBlock] = (float)b;
     __syncthreads();
     if (threadIdInBlock == 0){
         printf("Register function a %.3f. b %.3f \n",a, b);
@@ -311,13 +311,13 @@ __global__ void lamb_cuda_kernel_part2(
     T* __restrict__ g_b)
 {
 
-    T *s_a = SharedMemory<T>();
-    T *s_b = SharedMemory<T>();
+    float *s_a = SharedMemory<float>();
+    float *s_b = SharedMemory<float>();
 
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
-    s_a[threadIdInBlock] = g_a[threadIdInBlock];
-    s_b[threadIdInBlock] = g_b[threadIdInBlock];
+    s_a[threadIdInBlock] = (float)g_a[threadIdInBlock];
+    s_b[threadIdInBlock] = (float)g_b[threadIdInBlock];
 
     if (threadIdInBlock >= tsize)
         s_a[threadIdInBlock] = 0.0;
