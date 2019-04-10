@@ -224,8 +224,6 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
     if (tid == 0){
         g_a[blockIdx.x] = (T)a_sum;
         g_b[blockIdx.x] = (T)b_sum;
-        printf("Reduced Block in Shared memory g_a %.3f. g_b %.3f \n",a_sum, b_sum);
-    
     } 
 }
 
@@ -239,12 +237,7 @@ __device__ void reduce_two_vectors_in_register(T a, T b, T* g_a, T* g_b){
 
     s_a[threadIdInBlock] = a;
     s_b[threadIdInBlock] = b;
-  
-    if (threadIdInBlock == 0){
-        printf("Register function a %.3f. b %.3f \n",a, b);
-        printf("Register function from shared memory %.3f. b %.3f \n",s_a[0], s_b[0]);
-    
-    }
+
     reduce_block_in_shared_memory<T,blockSize>(s_a, s_b ,g_a, g_b);
 
 }
@@ -296,7 +289,7 @@ __global__ void lamb_cuda_kernel_part1(
                 
         }
 
-        if(blockId == 0 and threadIdInBlock < tsize)
+        if(blockId == 0 and threadIdInBlock < 10)
             printf("Thread ID %d. Reg W %.3f. Reg U %.3f \n",threadIdInBlock, reg_w, reg_u);
     
         reduce_two_vectors_in_register<T,blockSize>(reg_w, reg_u, w_l2_i, u_l2_i);
@@ -322,12 +315,6 @@ __global__ void lamb_cuda_kernel_part2(
         s_b[threadIdInBlock] = 0.0;
     }
 
-    if(threadIdInBlock == 0){
-        printf("Part 2 About to reduce block in shared memory \n");
-        printf("g_a[0] %.3f. g_b[0] %.3f \n",g_a[0], g_b[0]);
-        printf("s_a[0] %.3f. s_b[0] %.3f \n",s_a[0], s_b[0]);
-    
-    }
     reduce_block_in_shared_memory<T,blockSize>(s_a, s_b, g_a, g_b);
 }
 
