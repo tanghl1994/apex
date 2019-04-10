@@ -171,7 +171,7 @@ class TestFusedAdam(unittest.TestCase):
         adam_option = {'lr':5e-4, 'betas':(0.9, 0.999), 'eps':1e-08,
             'weight_decay':0, 'amsgrad':False}
 
-        tensor = torch.ones(nelem, dtype=torch.float, device='cuda')
+        tensor = torch.rand(nelem, dtype=torch.float, device='cuda')
         ref_param, tst_param, ref_optim, tst_optim = \
             self.gen_param_optim([tensor], adam_option)
 
@@ -181,7 +181,6 @@ class TestFusedAdam(unittest.TestCase):
             half_grads = self.gen_mixed_grad(ref_param, tst_param)
             ref_norm = torch.norm(ref_param[0])
             tst_norm = torch.norm(tst_param[0])
-            #print("Ref: ", ref_param[0], " Ref Norm ", ref_norm.item(), "Test Norm", tst_norm.item())
             
             ref_optim.step()
             tst_optim.step(grads=half_grads, output_params=[fp16_param])
