@@ -113,8 +113,6 @@ class Lamb(torch.optim.Optimizer):
 
                 step_size = step_size * lamb_coeff
                 print("LAMB Coeff is ", lamb_coeff)
-                print("Numerator is ", w_l2)
-                print("Denomenator is ", u_l2)
                 p.data.addcdiv_(-step_size, exp_avg, denom)
 
         return loss

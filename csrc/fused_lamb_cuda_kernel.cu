@@ -256,12 +256,6 @@ __global__ void lamb_cuda_kernel_part1(
                 
         }
 
-
-        if(blockId == 0 and threadIdInBlock < 10){
-            printf("Thread ID %d. Reg W %.3f. Reg U %.3f \n",threadIdInBlock, reg_w, reg_u);
-            printf("Thread ID %d. m %.3f. v %.3f. p %.3f s %.3f\n",threadIdInBlock, m[i], v[i], decay * p[i], g[i]/grad_scale);
-        }
-
         reduce_two_vectors_in_register<T,blockSize>(reg_w, reg_u, w_l2_i, u_l2_i);
 }
 
@@ -365,13 +359,11 @@ void fused_lamb_cuda(
 
         //Get tensor size
         int tsize = p.numel();
-        printf("Parameter Size is %d \n",tsize);
         //Determine #threads and #blocks
         const int threadsPerBlock = 512;
         int num_blocks = (tsize+threadsPerBlock-1)/threadsPerBlock;
         if (num_blocks > 512) num_blocks=512;
         int smemsize = 2 * threadsPerBlock * sizeof(float);
-        printf("Num blocks is %d \n",num_blocks);
         const dim3 blocks(num_blocks);
         const dim3 threads(threadsPerBlock);
 
