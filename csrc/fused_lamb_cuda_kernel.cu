@@ -271,7 +271,7 @@ __global__ void lamb_cuda_kernel_part1(
         //Assuming 2D grids and 2D blocks
         const int blockId = gridDim.x * blockIdx.y + blockIdx.x;
         const int threadsPerBlock = blockDim.x * blockDim.y;
-        const int threadIdInBlock = threadIdx.y * blockDim.x + threadIdx.x;
+        const int threadIdInBlock = cg::this_thread_block().thread_rank();
         const int i = (blockId * threadsPerBlock + threadIdInBlock);
         const int totThreads = gridDim.x*gridDim.y*threadsPerBlock;
         
@@ -350,7 +350,7 @@ __global__ void lamb_cuda_kernel_part2(
         //Assuming 2D grids and 2D blocks
         const int blockId = gridDim.x * blockIdx.y + blockIdx.x;
         const int threadsPerBlock = blockDim.x * blockDim.y;
-        const int threadIdInBlock = threadIdx.y * blockDim.x + threadIdx.x;
+        const int threadIdInBlock = cg::this_thread_block().thread_rank();
         const int i = (blockId * threadsPerBlock + threadIdInBlock);
         const int totThreads = gridDim.x*gridDim.y*threadsPerBlock;
         
