@@ -176,7 +176,7 @@ class TestFusedAdam(unittest.TestCase):
         fp16_param = torch.nn.Parameter(tensor.clone().half())
 
         for i in range(self.iters):
-            half_grads = self.gen_mixed_grad_fixed(ref_param, tst_param,scale=0.5)
+            half_grads = self.gen_mixed_grad(ref_param, tst_param)
             ref_norm = torch.norm(ref_param[0])
             tst_norm = torch.norm(tst_param[0])
             #print("Ref: ", ref_param[0], " Ref Norm ", ref_norm.item(), "Test Norm", tst_norm.item())

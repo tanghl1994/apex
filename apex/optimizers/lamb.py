@@ -105,11 +105,13 @@ class Lamb(torch.optim.Optimizer):
                 step_size = group['lr'] * math.sqrt(bias_correction2) / bias_correction1
 
                 update = exp_avg/denom
-                w_l2 = torch.norm(p)
-                u_l2 = torch.norm(update)
+                w_l2 = torch.norm(p).sqrt()
+                u_l2 = torch.norm(update).sqrt()
+                lamb_coeff = w_l2/u_l2
+                lamb_coeff = lamb_coeff.item()
 
-                step_size = step_size * w_l2/u_l2
-                print("LAMB Coeff is ", w_l2/u_l2)
+                step_size = step_size * lamb_coeff
+                print("LAMB Coeff is ", lamb_coeff)
                 p.data.addcdiv_(-step_size, exp_avg, denom)
 
         return loss
