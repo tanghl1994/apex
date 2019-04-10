@@ -80,7 +80,14 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
     T a_sum = s_a[tid];
     T b_sum = s_b[tid];
 
+    
+  
     cg::sync(cta);
+
+    if (tid == 0){
+        printf("Loaded from shared a_sum %.3f. b_sum %.3f \n",a_sum, b_sum);
+    } 
+
 
     // do reduction in shared mem
     if ((blockSize >= 512) && (tid < 256))
@@ -90,7 +97,13 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
     
     }
 
+
     cg::sync(cta);
+
+    if (tid == 0){
+        printf("Loaded from shared a_sum %.3f. b_sum %.3f \n",a_sum, b_sum);
+    } 
+
 
     if ((blockSize >= 256) && (tid < 128))
     {
@@ -100,6 +113,11 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
     }
 
     cg::sync(cta);
+
+    if (tid == 0){
+        printf("Loaded from shared a_sum %.3f. b_sum %.3f \n",a_sum, b_sum);
+    } 
+
     
     if ((blockSize >= 128) && (tid < 64))
     {
@@ -109,6 +127,11 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
     }
 
     cg::sync(cta);
+
+    if (tid == 0){
+        printf("Loaded from shared a_sum %.3f. b_sum %.3f \n",a_sum, b_sum);
+    } 
+
 
 #if (__CUDA_ARCH__ >= 300 )
     if ( tid < 32 )
@@ -122,11 +145,21 @@ reduce_block_in_shared_memory(T *s_a, T *s_b, T* g_a, T* g_b)
             b_sum = b_sum + s_b[tid + 32];
         }
 
+        if (tid == 0){
+            printf("Loaded from shared a_sum %.3f. b_sum %.3f \n",a_sum, b_sum);
+        } 
+    
+
         // Reduce final warp using shuffle
         for (int offset = warpSize/2; offset > 0; offset /= 2) 
         {
              a_sum += active.shfl_down(a_sum, offset);
              b_sum += active.shfl_down(a_sum, offset);
+
+             if (tid == 0){
+                printf("Loaded from shared a_sum %.3f. b_sum %.3f \n",a_sum, b_sum);
+            } 
+        
         
         }
     }
