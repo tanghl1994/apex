@@ -107,11 +107,15 @@ class Lamb(torch.optim.Optimizer):
                 update = exp_avg/denom
                 w_l2 = torch.norm(p)
                 u_l2 = torch.norm(update)
+
                 lamb_coeff = w_l2/u_l2
                 lamb_coeff = lamb_coeff.item()
 
+                if (w_l2.item() == 0 or u_l2.item()==0)
+                    lamb_coeff=1.0
+                
                 step_size = step_size * lamb_coeff
-                print("LAMB Coeff is ", lamb_coeff)
+                print("Python Lamb Coeff is ", lamb_coeff)
                 p.data.addcdiv_(-step_size, exp_avg, denom)
 
         return loss
