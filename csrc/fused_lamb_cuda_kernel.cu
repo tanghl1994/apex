@@ -311,13 +311,13 @@ __global__ void lamb_cuda_kernel_part2(
     T* __restrict__ g_b)
 {
 
-    float *s_a = SharedMemory<float>();
-    float *s_b = SharedMemory<float>();
+    float *s_a = SharedMemory<T>() ;
+    float *s_b = SharedMemory<T>() + blockDim.x * blockDim.y;
 
     const int threadIdInBlock = cg::this_thread_block().thread_rank();
 
-    s_a[threadIdInBlock] = (float)g_a[threadIdInBlock];
-    s_b[threadIdInBlock] = (float)g_b[threadIdInBlock];
+    s_a[threadIdInBlock] = g_a[threadIdInBlock];
+    s_b[threadIdInBlock] = g_b[threadIdInBlock];
 
     if (threadIdInBlock >= tsize)
         s_a[threadIdInBlock] = 0.0;
