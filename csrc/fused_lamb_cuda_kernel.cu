@@ -323,10 +323,12 @@ __global__ void lamb_cuda_kernel_part2(
         s_a[threadIdInBlock] = 0.0;
         s_b[threadIdInBlock] = 0.0;
 
-    if(threadIdInBlock == 0)
+    if(threadIdInBlock == 0){
         printf("Part 2 About to reduce block in shared memory \n");
         printf("g_a[0] %.3f. g_b[0] %.3f \n",g_a[0], g_b[0]);
-
+        printf("s_a[0] %.3f. s_b[0] %.3f \n",s_a[0], s_b[0]);
+    
+    }
     reduce_block_in_shared_memory<T,blockSize>(s_a, s_b, g_a, g_b);
 }
 
