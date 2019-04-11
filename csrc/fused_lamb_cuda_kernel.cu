@@ -388,6 +388,7 @@ void fused_lamb_cuda(
             AT_DISPATCH_FLOATING_TYPES_AND_HALF(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
                 using accscalar_t = at::acc_type<scalar_t, true>;
 
+
                 lamb_cuda_kernel_part1<accscalar_t, scalar_t, threadsPerBlock><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<accscalar_t>(),
                         p_copy.numel() ? p_copy.data<scalar_t>() : NULL,
@@ -404,12 +405,13 @@ void fused_lamb_cuda(
                         decay,
                         w_l2_i.data<accscalar_t>(),
                         u_l2_i.data<accscalar_t>());
-
+                    printf("Done part 1 \n");
                     lamb_cuda_kernel_part2<accscalar_t, scalar_t, threadsPerBlock><<<1,threadsPerBlock, smemsize, stream>>>(
                         num_blocks,
                         w_l2_i.data<accscalar_t>(),
                         u_l2_i.data<accscalar_t>());
 
+                    printf("Done part 2 \n")
                      lamb_cuda_kernel_part3<accscalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<accscalar_t>(),
                         p_copy.numel() ? p_copy.data<scalar_t>() : NULL,
@@ -426,6 +428,8 @@ void fused_lamb_cuda(
                         decay,
                         w_l2_i.data<accscalar_t>(),
                         u_l2_i.data<accscalar_t>());
+
+                    printf("Done part 3 \n");
             }));
       } else {
             using namespace at;
@@ -447,11 +451,13 @@ void fused_lamb_cuda(
                         decay,
                         w_l2_i.data<scalar_t>(),
                         u_l2_i.data<scalar_t>());
+                        printf("Done part 1 \n");
 
                  lamb_cuda_kernel_part2<scalar_t, scalar_t, threadsPerBlock><<<1,threadsPerBlock, smemsize, stream>>>(
                         num_blocks,
                         w_l2_i.data<scalar_t>(),
                         u_l2_i.data<scalar_t>());
+                        printf("Done part 2 \n");
 
                  lamb_cuda_kernel_part3<scalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<scalar_t>(),
@@ -469,6 +475,7 @@ void fused_lamb_cuda(
                         decay,
                         w_l2_i.data<scalar_t>(),
                         u_l2_i.data<scalar_t>());
+                        printf("Done part 3 \n");
             }));
       }
       THCudaCheck(cudaGetLastError());
