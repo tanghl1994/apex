@@ -105,8 +105,8 @@ class TestFusedAdam(unittest.TestCase):
 
     def test_multi_params(self):
         #sizes = [[4096, 1024], [4096], [4096, 2048], [32320, 1024], [1]]
-        sizes = [[4096, 1024], [4096], [4096, 2048], [32320, 1024], [1]]
-        
+        #sizes = [[4096, 1024], [4096], [4096, 2048], [32320, 1024], [1]]
+        sizes = [[32320,1024]]
         adam_option = {'lr':5e-4, 'betas':(0.9, 0.999), 'eps':1e-08,
             'weight_decay':0, 'amsgrad':False}
 
