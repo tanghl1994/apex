@@ -151,5 +151,5 @@ class FusedLamb(torch.optim.Optimizer):
                 self.lamb_coeffs.append(lamb_coeff)
         return loss
 
-    def lamb_coeffs(self):
+    def get_lamb_coeffs(self):
         return self.lamb_coeffs
