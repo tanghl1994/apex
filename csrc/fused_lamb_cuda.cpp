@@ -35,7 +35,7 @@ at::Tensor lamb(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor 
 
         fused_lamb_cuda(p, p_copy, m, v, g, lr, beta1, beta2, eps, grad_scale, step, mode, bias_correction, decay, w_l2_i, u_l2_i, lamb_coeff_val);
 
-        return lamb_coeff_val
+        return lamb_coeff_val;
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
