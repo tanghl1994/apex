@@ -7,7 +7,7 @@ import apex
 from lamb import Lamb
 
 
-class TestFusedAdam(unittest.TestCase):
+class TestFusedLamb(unittest.TestCase):
     def setUp(self, max_abs_diff=1e-3, max_rel_diff=1, iters=7):
         self.max_abs_diff = max_abs_diff
         self.max_rel_diff = max_rel_diff
@@ -24,9 +24,10 @@ class TestFusedAdam(unittest.TestCase):
             ref_param.append(torch.nn.Parameter(tensor.clone()))
             tst_param.append(torch.nn.Parameter(tensor.clone()))
 
-        ref_optim = torch.optim.Adam(ref_param, **adam_option)
-        #ref_optim = Lamb(ref_param, **adam_option)
-        tst_optim = apex.optimizers.FusedAdam(tst_param, **adam_option)
+        #ref_optim = torch.optim.Adam(ref_param, **adam_option)
+        ref_optim = Lamb(ref_param, **adam_option)
+        tst_optim = apex.optimizers.FusedLamb(tst_param, **adam_option)
+        print("Getting Fused Lamb Test Optimizer")
        
         return (ref_param, tst_param, ref_optim, tst_optim)
 
@@ -103,7 +104,7 @@ class TestFusedAdam(unittest.TestCase):
             self.assertLessEqual(max_rel_diff, self.max_rel_diff)
 
     def test_multi_params(self):
-        sizes = [[4096, 1024], [4096], [4096, 2048], [32320, 1024], [1]]
+        sizes = [[4096, 1024], [4096], [4096, 2048], [2320, 1024], [1]]
  
         adam_option = {'lr':5e-4, 'betas':(0.9, 0.999), 'eps':1e-08,
             'weight_decay':0, 'amsgrad':False}
