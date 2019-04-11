@@ -8,7 +8,7 @@ from lamb import Lamb
 
 
 class TestFusedAdam(unittest.TestCase):
-    def setUp(self, max_abs_diff=1e-3, max_rel_diff=1, iters=1):
+    def setUp(self, max_abs_diff=1e-3, max_rel_diff=1, iters=7):
         self.max_abs_diff = max_abs_diff
         self.max_rel_diff = max_rel_diff
         self.iters = iters
@@ -62,7 +62,7 @@ class TestFusedAdam(unittest.TestCase):
         return max_abs_diff, max_rel_diff
 
     def gen_single_type_test(self, param_type=torch.float):
-        nelem = 10
+        nelem = 278011
         adam_option = {'lr':5e-4, 'betas':(0.9, 0.999), 'eps':1e-08,
             'weight_decay':0, 'amsgrad':False}
 
