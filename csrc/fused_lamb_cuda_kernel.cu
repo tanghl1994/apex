@@ -299,7 +299,8 @@ __global__ void lamb_cuda_kernel_part2(
         adamMode_t mode,
         const float decay,
         T* __restrict__ w_l2_i,
-        T* __restrict__ u_l2_i)
+        T* __restrict__ u_l2_i,
+        T* __restrict__ lamb_coeff_val)
 {
 
         //Assuming 2D grids and 2D blocks
@@ -318,7 +319,10 @@ __global__ void lamb_cuda_kernel_part2(
             lamb_coeff = reg_w/reg_u;
 
         if(blockId == 0 and threadIdInBlock == 0)
+        {
+            lamb_coeff_val[0] = lamb_coeff;
             printf("Cuda Lamb Coeff is %.3f \n",lamb_coeff);
+        }
     
         for (int j = i; j < tsize; j+=totThreads) {
             T pj = (float)p[j];
@@ -353,7 +357,8 @@ void fused_lamb_cuda(
         int bias_correction,
         float decay,
         at::Tensor & w_l2_i,
-        at::Tensor & u_l2_i)
+        at::Tensor & u_l2_i,
+        at::Tensor & lamb_coeff)
 {
 //        using namespace at;
 
@@ -432,7 +437,8 @@ void fused_lamb_cuda(
                         (adamMode_t) mode,
                         decay,
                         w_l2_i.data<accscalar_t>(),
-                        u_l2_i.data<accscalar_t>());
+                        u_l2_i.data<accscalar_t>(),
+                        lamb_coeff.data<accscalar_t>());
 
             }));
       } else {
@@ -477,7 +483,8 @@ void fused_lamb_cuda(
                         (adamMode_t) mode,
                         decay,
                         w_l2_i.data<scalar_t>(),
-                        u_l2_i.data<scalar_t>());
+                        u_l2_i.data<scalar_t>(),
+                        lamb_coeff.data<scalar_t>());
 
             }));
       }

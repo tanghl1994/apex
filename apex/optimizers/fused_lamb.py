@@ -46,6 +46,7 @@ class FusedLamb(torch.optim.Optimizer):
                         max_grad_norm=max_grad_norm)
         super(FusedLamb, self).__init__(params, defaults)
         self.eps_mode = 0 if  eps_inside_sqrt else 1
+        self.lamb_coeffs=[]
 
     def step(self, closure=None, grads=None, output_params=None, scale=1., grad_norms=None):
         """Performs a single optimization step.
@@ -89,6 +90,9 @@ class FusedLamb(torch.optim.Optimizer):
         if grad_norms is None:
             grad_norms = [None]*len(self.param_groups)
 
+        #remove the previous coeffs
+        del self.lamb_coeffs[:]
+        
         for group, grads_this_group, output_params_this_group, grad_norm in zip(self.param_groups, grads_group, output_params_group, grad_norms):
             if grads_this_group is None:
                grads_this_group = [None]*len(group['params'])
@@ -130,18 +134,22 @@ class FusedLamb(torch.optim.Optimizer):
                 state['step'] += 1
 
                 out_p = torch.tensor([], dtype = torch.float) if output_param is None else output_param
-                fused_lamb_cuda.lamb(p.data,
-                                     out_p,
-                                     exp_avg,
-                                     exp_avg_sq,
-                                     grad,
-                                     group['lr'],
-                                     beta1,
-                                     beta2,
-                                     group['eps'],
-                                     combined_scale,
-                                     state['step'],
-                                     self.eps_mode,
-                                     bias_correction,
-                                     group['weight_decay'])
+                lamb_coeff = fused_lamb_cuda.lamb(p.data,
+                                                    out_p,
+                                                    exp_avg,
+                                                    exp_avg_sq,
+                                                    grad,
+                                                    group['lr'],
+                                                    beta1,
+                                                    beta2,
+                                                    group['eps'],
+                                                    combined_scale,
+                                                    state['step'],
+                                                    self.eps_mode,
+                                                    bias_correction,
+                                                    group['weight_decay'])
+                self.lamb_coeffs.append(lamb_coeff)
         return loss
+
+    def lamb_coeffs(self):
+        return self.lamb_coeffs
