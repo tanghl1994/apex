@@ -120,6 +120,7 @@ class TestFusedLamb(unittest.TestCase):
             half_grads = self.gen_mixed_grad(ref_param, tst_param)
             ref_optim.step()
             tst_optim.step(grads=half_grads)
+            print(tst_optim.lamb_coeffs())
             max_abs_diff, max_rel_diff = self.get_max_diff(ref_param, tst_param)
             self.assertLessEqual(max_abs_diff, self.max_abs_diff)
             self.assertLessEqual(max_rel_diff, self.max_rel_diff)
