@@ -59,7 +59,7 @@ class TestFusedLamb(unittest.TestCase):
             if max_abs_diff_p > max_abs_diff:  max_abs_diff = max_abs_diff_p
             if max_rel_diff_p > max_rel_diff:  max_rel_diff = max_rel_diff_p
 
-        print(max_abs_diff)
+        print(max_abs_diff, max_rel_diff, p_ref.max(), p_ref.min())
         return max_abs_diff, max_rel_diff
 
     def gen_single_type_test(self, param_type=torch.float):
