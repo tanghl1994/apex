@@ -113,7 +113,6 @@ class Lamb(torch.optim.Optimizer):
 
                 if (w_l2.item() == 0 or u_l2.item()==0):
                     lamb_coeff=1.0
-                lamb_coeff = 1.0001
                 
                 step_size = step_size * lamb_coeff
                 print("Python Lamb Coeff is ", lamb_coeff)
