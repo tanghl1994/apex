@@ -59,7 +59,6 @@ class TestFusedLamb(unittest.TestCase):
             if max_abs_diff_p > max_abs_diff:  max_abs_diff = max_abs_diff_p
             if max_rel_diff_p > max_rel_diff:  max_rel_diff = max_rel_diff_p
 
-        print(max_abs_diff, max_rel_diff, p_ref.max(), p_ref.min())
         return max_abs_diff, max_rel_diff
 
     def gen_single_type_test(self, param_type=torch.float):
@@ -106,7 +105,7 @@ class TestFusedLamb(unittest.TestCase):
 
     def test_multi_params(self):
         #sizes = [[4096, 1024], [4096], [4096, 2048], [4096, 1024], [1]]
-        sizes = [[4096, 1024],[4096, 1024], [4096], [4096, 2048], [4096, 2048],[1]]
+        sizes = [[4096, 1024],[4096, 1024], [4096], [4096, 2048],[1]]
  
         adam_option = {'lr':5e-4, 'betas':(0.9, 0.999), 'eps':1e-08,
             'weight_decay':0, 'amsgrad':False}
