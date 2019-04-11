@@ -366,11 +366,11 @@ void fused_lamb_cuda(
 
         int smemsize = 0;
 
-        if (g.type().scalarType() == at::ScalarType::Double)
+        if (p.type().scalarType() == at::ScalarType::Double)
             smemsize = 2 * threadsPerBlock * sizeof(double);
         else
             smemsize = 2 * threadsPerBlock * sizeof(float);
-            
+
         const dim3 blocks(num_blocks);
         const dim3 threads(threadsPerBlock);
 
