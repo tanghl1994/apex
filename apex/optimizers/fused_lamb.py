@@ -148,7 +148,7 @@ class FusedLamb(torch.optim.Optimizer):
                                                     self.eps_mode,
                                                     bias_correction,
                                                     group['weight_decay'])
-                self.lamb_coeffs.append(lamb_coeff)
+                self.lamb_coeffs.append(lamb_coeff.item())
         return loss
 
     def get_lamb_coeffs(self):
