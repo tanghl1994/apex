@@ -395,7 +395,8 @@ void fused_lamb_cuda(
             AT_DISPATCH_FLOATING_TYPES_AND_HALF(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
                 using accscalar_t = at::acc_type<scalar_t, true>;
 
-                printf("Before Launching kernel \n");fflush(stdout);
+                printf("Before Launching kernel \n");
+                fflush(stdout);
 
                 lamb_cuda_kernel_part1<accscalar_t, scalar_t, threadsPerBlock><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<accscalar_t>(),
@@ -413,13 +414,15 @@ void fused_lamb_cuda(
                         decay,
                         w_l2_i.data<accscalar_t>(),
                         u_l2_i.data<accscalar_t>());
-                    printf("Done part 1 \n");fflush(stdout);
+                    printf("Done part 1 \n");
+                    fflush(stdout);
                     lamb_cuda_kernel_part2<accscalar_t, scalar_t, threadsPerBlock><<<1,threadsPerBlock, smemsize, stream>>>(
                         num_blocks,
                         w_l2_i.data<accscalar_t>(),
                         u_l2_i.data<accscalar_t>());
 
-                    printf("Done part 2 \n")fflush(stdout);
+                    printf("Done part 2 \n");
+                    fflush(stdout);
                      lamb_cuda_kernel_part3<accscalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<accscalar_t>(),
                         p_copy.numel() ? p_copy.data<scalar_t>() : NULL,
@@ -442,7 +445,8 @@ void fused_lamb_cuda(
       } else {
             using namespace at;
             AT_DISPATCH_FLOATING_TYPES(TypeShim(g.type()), "lamb_cuda_kernel", ([&] {
-                printf("Before launching else kernel \n");fflush(stdout);
+                printf("Before launching else kernel \n");
+                fflush(stdout);
                 lamb_cuda_kernel_part1<scalar_t, scalar_t, threadsPerBlock><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<scalar_t>(),
                         NULL, //don't output p_copy for fp32, it's wasted write
@@ -465,7 +469,8 @@ void fused_lamb_cuda(
                         num_blocks,
                         w_l2_i.data<scalar_t>(),
                         u_l2_i.data<scalar_t>());
-                        printf("Done part 2 \n");fflush(stdout);
+                        printf("Done part 2 \n");
+                        fflush(stdout);
 
                  lamb_cuda_kernel_part3<scalar_t, scalar_t><<<blocks,threadsPerBlock, smemsize, stream>>>(
                         p.data<scalar_t>(),
@@ -483,7 +488,8 @@ void fused_lamb_cuda(
                         decay,
                         w_l2_i.data<scalar_t>(),
                         u_l2_i.data<scalar_t>());
-                        printf("Done part 3 \n");fflush(stdout);
+                        printf("Done part 3 \n");
+                        fflush(stdout);
             }));
       }
       THCudaCheck(cudaGetLastError());
