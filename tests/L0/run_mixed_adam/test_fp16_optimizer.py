@@ -34,7 +34,7 @@ class TestFP16Optimizer(unittest.TestCase):
     def test_fp16_optimizer(self):
 
         ref_optim = torch.optim.Adam(self.ref_model.parameters())
-        ref_optim = apex.fp16_utils.FP16_Optimizer(ref_optim, verbose=False)
+        #ref_optim = apex.fp16_utils.FP16_Optimizer(ref_optim, verbose=False)
 
         tst_optim = apex.optimizers.FusedAdam(self.tst_model.parameters())
         tst_optim = apex.optimizers.FP16_Optimizer(tst_optim)
