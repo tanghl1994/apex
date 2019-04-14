@@ -53,6 +53,7 @@ class FP16_Optimizer(object):
         self.fp16_groups_flat = []
         self.fp32_groups_flat = []
 
+        print(self.optimizer.param_groups)
         # loop to deal with groups
         for i, param_group in enumerate(self.optimizer.param_groups):
             # push this group to list before modify
@@ -68,6 +69,7 @@ class FP16_Optimizer(object):
             # modify optimizer of have flat master weight
             self.fp32_groups_flat[i].requires_grad = True # keep this in case internal optimizer uses it
             param_group['params'] = [self.fp32_groups_flat[i]]
+        print(self.optimizer.param_groups)
 
         # we may have a way of fusing dynamic scale. Do not support for now
         if dynamic_loss_scale:
@@ -126,7 +128,7 @@ class FP16_Optimizer(object):
         else:
             return norm
 
-    def step(self, closure=None):
+       def step(self, closure=None):
         """
         Not supporting closure.
         """
@@ -173,7 +175,7 @@ class FP16_Optimizer(object):
     def _update_scale(self, skip):
         if self.dynamic_loss_scale:
             if skip:
-                print("\nGrad overflow on iteration", self.cur_iter)
+                print("\nGrad overflow on iteration", self.cur_iter)inpuit
                 print("Using dynamic loss scale of", self.cur_scale)
                 self.cur_scale = max(self.cur_scale/self.scale_factor, 1)
                 self.last_overflow_iter = self.cur_iter
