@@ -6,9 +6,7 @@ class FP16_Optimizer(object):
     :class:`FP16_Optimizer` A cutdown version of apex.fp16_utils.FP16_Optimizer.
     Designed only to wrap apex.optimizers.FusedAdam.
     Refer to apex.fp16_utils documents for more information.
-
     Example::
-
         model = torch.nn.Linear(D_in, D_out).cuda().half()
         optimizer = apex.optimizers.FusedAdam(model.parameters())
         # Name the FP16_Optimizer instance to replace the existing optimizer
@@ -18,9 +16,7 @@ class FP16_Optimizer(object):
         # loss.backward() becomes:
         optimizer.backward(loss)
         ...
-
     Example with dynamic loss scaling::
-
         ...
         optimizer = FP16_Optimizer(optimizer, dynamic_loss_scale=True)
                                    # optional arg to control dynamic loss scaling behavior
@@ -53,7 +49,6 @@ class FP16_Optimizer(object):
         self.fp16_groups_flat = []
         self.fp32_groups_flat = []
 
-        print(self.optimizer.param_groups)
         # loop to deal with groups
         for i, param_group in enumerate(self.optimizer.param_groups):
             # push this group to list before modify
@@ -69,7 +64,6 @@ class FP16_Optimizer(object):
             # modify optimizer of have flat master weight
             self.fp32_groups_flat[i].requires_grad = True # keep this in case internal optimizer uses it
             param_group['params'] = [self.fp32_groups_flat[i]]
-        print(self.optimizer.param_groups)
 
         # we may have a way of fusing dynamic scale. Do not support for now
         if dynamic_loss_scale:
@@ -106,12 +100,10 @@ class FP16_Optimizer(object):
         Compute fp16 grad norm for later clipping(fused with update).
         Internal accumulated in fp32.
         Also fused in NaN check. Possibly other reduction needed for grad.
-
         Args:
             fp16_grads_flat (tensor): fp16 grad flattened
             norm_type (float or int): type of the used p-norm. Can be ``'inf'`` for
                 infinity norm.
-
         Returns:
             Total norm of the current fp16 gradients (viewed as a single vector).
             Returns -1 if the most recently computed fp16 gradients overflowed
@@ -128,7 +120,7 @@ class FP16_Optimizer(object):
         else:
             return norm
 
-       def step(self, closure=None):
+    def step(self, closure=None):
         """
         Not supporting closure.
         """
@@ -164,7 +156,6 @@ class FP16_Optimizer(object):
     def backward(self, loss):
         """
         :attr:`backward` performs the following steps:
-
         1. fp32_loss = loss.float()
         2. scaled_loss = fp32_loss*loss_scale
         3. scaled_loss.backward(), which accumulates scaled gradients into the ``.grad`` attributes of the model's fp16 leaves
@@ -175,7 +166,7 @@ class FP16_Optimizer(object):
     def _update_scale(self, skip):
         if self.dynamic_loss_scale:
             if skip:
-                print("\nGrad overflow on iteration", self.cur_iter)inpuit
+                print("\nGrad overflow on iteration", self.cur_iter)
                 print("Using dynamic loss scale of", self.cur_scale)
                 self.cur_scale = max(self.cur_scale/self.scale_factor, 1)
                 self.last_overflow_iter = self.cur_iter

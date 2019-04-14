@@ -1,6 +1,7 @@
 import unittest
 import torch
 import apex
+import os
 
 class TestFP16Optimizer(unittest.TestCase):
     def setUp(self, max_abs_diff=1e-3, max_rel_diff=1, iters=7):
