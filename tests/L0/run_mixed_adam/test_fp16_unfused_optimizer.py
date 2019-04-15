@@ -118,7 +118,7 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
 
     def test_grad_clip(self):
         ref_optim = apex.optimizers.FusedLamb(self.ref_model.parameters())
-        ref_optim = apex.fp16_utils.FP16_Optimizer(ref_optim, verbose=False)
+        ref_optim = apex.optimizers.FP16_Optimizer(ref_optim, verbose=False)
 
         tst_optim = apex.optimizers.FusedLamb(self.tst_model.parameters(), max_grad_norm=0.01)
         tst_optim = apex.optimizers.FP16_UnfusedOptimizer(tst_optim)

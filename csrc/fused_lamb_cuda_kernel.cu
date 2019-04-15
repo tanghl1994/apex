@@ -317,7 +317,7 @@ __global__ void lamb_cuda_kernel_part2(
 
         if (reg_w !=0 and reg_u !=0){
             lamb_coeff = reg_w/reg_u;
-            lamb_coeff = 1.0;
+            //lamb_coeff = 1.0;
         }
 
         if(blockId == 0 and threadIdInBlock == 0)
