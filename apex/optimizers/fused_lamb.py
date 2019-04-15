@@ -93,23 +93,27 @@ class FusedLamb(torch.optim.Optimizer):
         #remove the previous coeffs
         del self.lamb_coeffs[:]
         
-        for group, grads_this_group, output_params_this_group, grad_norm in zip(self.param_groups, grads_group, output_params_group, grad_norms):
+        for group, grads_this_group, output_params_this_group, grad_norm_group in zip(self.param_groups, grads_group, output_params_group, grad_norms):
             if grads_this_group is None:
                grads_this_group = [None]*len(group['params'])
             if output_params_this_group is None:
                output_params_this_group = [None]*len(group['params'])
 
-            # compute combined scale factor for this group
-            combined_scale = scale
-            if group['max_grad_norm'] > 0:
-                # norm is in fact norm*scale
-                clip = ((grad_norm / scale) + 1e-6) / group['max_grad_norm']
-                if clip > 1:
-                    combined_scale = clip * scale
+            if grad_norm_group is None:
+                grad_norm_group = [None] * len(group['params'])
 
             bias_correction = 1 if group['bias_correction'] else 0
 
-            for p, grad, output_param in zip(group['params'], grads_this_group, output_params_this_group):
+            for p, grad, output_param, grad_norm in zip(group['params'], grads_this_group, output_params_this_group, grad_norm_group):
+                
+                # compute combined scale factor for this group
+                combined_scale = scale
+                if group['max_grad_norm'] > 0:
+                    # norm is in fact norm*scale
+                    clip = ((grad_norm / scale) + 1e-6) / group['max_grad_norm']
+                    if clip > 1:
+                        combined_scale = clip * scale
+                
                 #note: p.grad should not ever be set for correct operation of mixed precision optimizer that sometimes sends None gradients
                 if p.grad is None and grad is None:
                     continue
