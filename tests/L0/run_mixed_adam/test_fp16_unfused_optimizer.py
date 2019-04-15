@@ -106,10 +106,10 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
         for i in range(self.iters):
             ref_loss = self.ref_model(self.x).sum()
             ref_optim.backward(ref_loss)
-            print("\n Ref Step")
+            #print("\n Ref Step")
             ref_optim.step()
 
-            print("\n Test Step")
+            #print("\n Test Step")
             tst_loss = self.tst_model(self.x).sum()
             tst_optim.backward(tst_loss)
             tst_optim.step()
