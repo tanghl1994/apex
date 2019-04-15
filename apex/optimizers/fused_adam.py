@@ -89,7 +89,7 @@ class FusedAdam(torch.optim.Optimizer):
         if grad_norms is None:
             grad_norms = [None]*len(self.param_groups)
 
-        for group, grads_this_group, output_params_this_group, grad_norm in zip(self.param_groups, grads_group, output_params_group, grad_norms):
+        for group, grads_this_group, output_params_this_group, grad_norm_group in zip(self.param_groups, grads_group, output_params_group, grad_norms):
             if grads_this_group is None:
                grads_this_group = [None]*len(group['params'])
             if output_params_this_group is None:
