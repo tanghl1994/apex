@@ -89,8 +89,7 @@ class FusedLamb(torch.optim.Optimizer):
 
         if grad_norms is None:
             grad_norms = [None]*len(self.param_groups)
-        elif not isinstance(grad_norms, list):
-            grad_norms = [grad_norms]
+
 
         #remove the previous coeffs
         del self.lamb_coeffs[:]
@@ -103,6 +102,8 @@ class FusedLamb(torch.optim.Optimizer):
 
             if grad_norm_group is None:
                 grad_norm_group = [None] * len(group['params'])
+            elif not isinstance(grad_norms, list):
+                grad_norms = [grad_norms]
 
             bias_correction = 1 if group['bias_correction'] else 0
 
