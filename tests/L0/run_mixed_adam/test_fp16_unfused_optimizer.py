@@ -95,11 +95,11 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
 
     def test_parameter_groups(self):
 
-        ref_groups = [{'params': [self.ref_model.weight]},{'params': [self.ref_model.bias]}]
+        ref_groups = [{'params': [self.ref_model.dense1.weight,self.ref_model.dense2.weight,self.ref_model.dense3.weight]},{'params': [self.ref_model.dense1.bias,self.ref_model.dense2.bias,self.ref_model.dense2.bias]}]
         ref_optim = apex.optimizers.FusedLamb(ref_groups)
         ref_optim = apex.optimizers.FP16_Optimizer(ref_optim, verbose=False)
 
-        tst_groups = [{'params': [self.tst_model.weight]},{'params': [self.tst_model.bias]}]
+        tst_groups = [{'params': [self.tst_model.dense1.weight,self.tst_model.dense2.weight,self.tst_model.dense3.weight]},{'params': [self.tst_model.dense1.bias,self.tst_model.dense2.bias,self.tst_model.dense2.bias]}]
         tst_optim = apex.optimizers.FusedLamb(tst_groups)
         tst_optim = apex.optimizers.FP16_UnfusedOptimizer(tst_optim)
 
