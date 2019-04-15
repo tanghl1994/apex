@@ -32,19 +32,22 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
         return max_abs_diff, max_rel_diff
 
     def test_fp16_optimizer(self):
-
         ref_optim = apex.optimizers.FusedLamb(self.ref_model.parameters())
+        print("Ref Opt Param Group", ref_optim.param_groups)
         ref_optim = apex.fp16_utils.FP16_Optimizer(ref_optim, verbose=False)
-
+        print("\n Ref Opt Param Group after passing through FP16 Opt", ref_optim.param_groups)
+        
         tst_optim = apex.optimizers.FusedLamb(self.tst_model.parameters())
-        print(tst_optim.param_groups)
+        print("\n \n Test Opt Param group", tst_optim.param_groups)
         tst_optim = apex.optimizers.FP16_UnfusedOptimizer(tst_optim)
-        print(tst_optim.optimizer.param_groups)
+        print("\n Test opt Param Group after passing though FP16 Opt", tst_optim.optimizer.param_groups)
         for i in range(self.iters):
-            #ref_loss = self.ref_model(self.x).sum()
-            #ref_optim.backward(ref_loss)
-            #ref_optim.step()
+            ref_loss = self.ref_model(self.x).sum()
+            ref_optim.backward(ref_loss)
+            print("\n Ref Step")
+            ref_optim.step()
 
+            print("\n Test Step")
             tst_loss = self.tst_model(self.x).sum()
             tst_optim.backward(tst_loss)
             tst_optim.step()
