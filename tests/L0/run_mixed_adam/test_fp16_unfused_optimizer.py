@@ -23,7 +23,7 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
         self.iters = iters
         torch.cuda.manual_seed(13337)
 
-        N, D_in, D_out, D2_out, D3_out = 64,1024, 512, 1024, 256
+        N, D_in, D_out, D2_out, D3_out = 64,128, 128, 128, 128
         self.N = N
         self.D_in = D_in
         self.D_out = D_out
