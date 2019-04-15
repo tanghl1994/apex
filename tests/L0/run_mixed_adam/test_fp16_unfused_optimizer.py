@@ -27,7 +27,7 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
         self.D_in = D_in
         self.D_out = D_out
         self.D2_out = D2_out
-        self.D3_out = D3-out
+        self.D3_out = D3_out
         self.x = torch.randn((N, D_in), dtype=torch.float16, device='cuda')
         self.ref_model = DummyModel(D_in, D_out, D2_out, D3_out).cuda().half()
         self.tst_model = DummyModel(D_in, D_out, D2_out, D3_out).cuda().half()
