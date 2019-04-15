@@ -89,6 +89,8 @@ class FusedLamb(torch.optim.Optimizer):
 
         if grad_norms is None:
             grad_norms = [None]*len(self.param_groups)
+        elif not isinstance(grad_norms, list):
+            grad_norms = [grad_norms]
 
         #remove the previous coeffs
         del self.lamb_coeffs[:]
