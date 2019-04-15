@@ -3,7 +3,7 @@ import torch
 import apex
 import os
 
-class DummyModel(torch.nn.module):
+class DummyModel(torch.nn.Module):
     def __init__(self, D_int, D_out, D2_out, D3_out):
         self.dense1 = torch.nn.Linear(D_in, D_out)
         self.dense2 = torch.nn.Linear(D_out, D2_out)
