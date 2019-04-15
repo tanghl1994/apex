@@ -23,7 +23,7 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
         self.iters = iters
         torch.cuda.manual_seed(13337)
 
-        N, D_in, D_out, D2_out, D3_out = 64,256, 1024, 256, 512
+        N, D_in, D_out, D2_out, D3_out = 64,512, 512, 512, 512
         self.N = N
         self.D_in = D_in
         self.D_out = D_out
@@ -106,8 +106,10 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
         for i in range(self.iters):
             ref_loss = self.ref_model(self.x).sum()
             ref_optim.backward(ref_loss)
+            print("\n Ref Step")
             ref_optim.step()
 
+            print("\n Test Step")
             tst_loss = self.tst_model(self.x).sum()
             tst_optim.backward(tst_loss)
             tst_optim.step()
@@ -115,7 +117,7 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
             max_abs_diff, max_rel_diff = self.get_max_diff(self.ref_model.parameters(), self.tst_model.parameters())
             self.assertLessEqual(max_abs_diff, self.max_abs_diff)
             self.assertLessEqual(max_rel_diff, self.max_rel_diff)
-
+        
     def test_grad_clip(self):
         ref_optim = apex.optimizers.FusedLamb(self.ref_model.parameters())
         ref_optim = apex.optimizers.FP16_Optimizer(ref_optim, verbose=False)
