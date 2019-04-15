@@ -34,7 +34,7 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
     def test_fp16_optimizer(self):
         ref_optim = apex.optimizers.FusedLamb(self.ref_model.parameters())
         print("Ref Opt Param Group", ref_optim.param_groups)
-        ref_optim = apex.fp16_utils.FP16_Optimizer(ref_optim, verbose=False)
+        ref_optim = apex.optimizers.FP16_Optimizer(ref_optim, verbose=False)
         print("\n Ref Opt Param Group after passing through FP16 Opt", ref_optim.param_groups)
         
         tst_optim = apex.optimizers.FusedLamb(self.tst_model.parameters())
