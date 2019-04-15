@@ -117,6 +117,7 @@ class FusedLamb(torch.optim.Optimizer):
                     if clip > 1:
                         combined_scale = clip * scale
                 
+                print("Combined Scale is ", combined_scale)
                 #note: p.grad should not ever be set for correct operation of mixed precision optimizer that sometimes sends None gradients
                 if p.grad is None and grad is None:
                     continue
