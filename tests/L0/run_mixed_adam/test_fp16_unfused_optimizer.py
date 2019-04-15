@@ -23,7 +23,7 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
         self.iters = iters
         torch.cuda.manual_seed(13337)
 
-        N, D_in, D_out, D2_out, D3_out = 64,512, 512, 512, 512
+        N, D_in, D_out, D2_out, D3_out = 64,1024, 16, 512, 256
         self.N = N
         self.D_in = D_in
         self.D_out = D_out
@@ -47,12 +47,12 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
         return max_abs_diff, max_rel_diff
 
     def test_fp16_optimizer(self):
-        ref_optim = apex.optimizers.FusedLamb(self.ref_model.parameters())
+        ref_optim = apex.optimizers.FusedAdam(self.ref_model.parameters())
         print("Ref Opt Param Group", ref_optim.param_groups)
         ref_optim = apex.optimizers.FP16_Optimizer(ref_optim, verbose=False)
         print("\n Ref Opt Param Group after passing through FP16 Opt", ref_optim.param_groups)
         
-        tst_optim = apex.optimizers.FusedLamb(self.tst_model.parameters())
+        tst_optim = apex.optimizers.FusedAdam(self.tst_model.parameters())
         print("\n \n Test Opt Param group", tst_optim.param_groups)
         tst_optim = apex.optimizers.FP16_UnfusedOptimizer(tst_optim)
         print("\n Test opt Param Group after passing though FP16 Opt", tst_optim.optimizer.param_groups)
@@ -74,10 +74,10 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
 
     def test_loss_scaling(self):
 
-        ref_optim = apex.optimizers.FusedLamb(self.ref_model.parameters())
+        ref_optim = apex.optimizers.FusedAdam(self.ref_model.parameters())
         ref_optim = apex.fp16_utils.FP16_Optimizer(ref_optim, static_loss_scale=128.0, verbose=False)
 
-        tst_optim = apex.optimizers.FusedLamb(self.tst_model.parameters())
+        tst_optim = apex.optimizers.FusedAdam(self.tst_model.parameters())
         tst_optim = apex.optimizers.FP16_UnfusedOptimizer(tst_optim, static_loss_scale=128.0)
 
         for i in range(self.iters):
@@ -96,11 +96,11 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
     def test_parameter_groups(self):
 
         ref_groups = [{'params': [self.ref_model.dense1.weight,self.ref_model.dense2.weight,self.ref_model.dense3.weight]},{'params': [self.ref_model.dense1.bias,self.ref_model.dense2.bias,self.ref_model.dense2.bias]}]
-        ref_optim = apex.optimizers.FusedLamb(ref_groups)
+        ref_optim = apex.optimizers.FusedAdam(ref_groups)
         ref_optim = apex.optimizers.FP16_Optimizer(ref_optim, verbose=False)
 
         tst_groups = [{'params': [self.tst_model.dense1.weight,self.tst_model.dense2.weight,self.tst_model.dense3.weight]},{'params': [self.tst_model.dense1.bias,self.tst_model.dense2.bias,self.tst_model.dense2.bias]}]
-        tst_optim = apex.optimizers.FusedLamb(tst_groups)
+        tst_optim = apex.optimizers.FusedAdam(tst_groups)
         tst_optim = apex.optimizers.FP16_UnfusedOptimizer(tst_optim)
 
         for i in range(self.iters):
@@ -119,10 +119,10 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
             self.assertLessEqual(max_rel_diff, self.max_rel_diff)
         
     def test_grad_clip(self):
-        ref_optim = apex.optimizers.FusedLamb(self.ref_model.parameters())
+        ref_optim = apex.optimizers.FusedAdam(self.ref_model.parameters())
         ref_optim = apex.optimizers.FP16_Optimizer(ref_optim, verbose=False)
 
-        tst_optim = apex.optimizers.FusedLamb(self.tst_model.parameters(), max_grad_norm=0.01)
+        tst_optim = apex.optimizers.FusedAdam(self.tst_model.parameters(), max_grad_norm=0.01)
         tst_optim = apex.optimizers.FP16_UnfusedOptimizer(tst_optim)
 
         for i in range(self.iters):

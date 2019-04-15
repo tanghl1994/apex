@@ -95,17 +95,25 @@ class FusedAdam(torch.optim.Optimizer):
             if output_params_this_group is None:
                output_params_this_group = [None]*len(group['params'])
 
-            # compute combined scale factor for this group
-            combined_scale = scale
-            if group['max_grad_norm'] > 0:
-                # norm is in fact norm*scale
-                clip = ((grad_norm / scale) + 1e-6) / group['max_grad_norm']
-                if clip > 1:
-                    combined_scale = clip * scale
+            if grad_norm_group is None:
+                grad_norm_group = [None] * len(group['params'])
+            elif not isinstance(grad_norm_group, list):
+                grad_norm_group = [grad_norm_group]
 
             bias_correction = 1 if group['bias_correction'] else 0
 
-            for p, grad, output_param in zip(group['params'], grads_this_group, output_params_this_group):
+            for p, grad, output_param, grad_norm in zip(group['params'], grads_this_group, output_params_this_group, grad_norm_group):
+                
+                # compute combined scale factor for this group
+                combined_scale = scale
+                if group['max_grad_norm'] > 0:
+                    # norm is in fact norm*scale
+                    clip = ((grad_norm / scale) + 1e-6) / group['max_grad_norm']
+                    if clip > 1:
+                        combined_scale = clip * scale
+                
+                print("Combined Scale is ", combined_scale)
+
                 #note: p.grad should not ever be set for correct operation of mixed precision optimizer that sometimes sends None gradients
                 if p.grad is None and grad is None:
                     continue
