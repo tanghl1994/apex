@@ -69,7 +69,7 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
 
             max_abs_diff, max_rel_diff = self.get_max_diff(self.ref_model.parameters(), self.tst_model.parameters())
             self.assertLessEqual(max_abs_diff, self.max_abs_diff)
-            #self.assertLessEqual(max_rel_diff, self.max_rel_diff)
+            self.assertLessEqual(max_rel_diff, self.max_rel_diff)
 
 
     def test_loss_scaling(self):
