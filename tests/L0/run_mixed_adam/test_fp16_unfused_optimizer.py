@@ -5,6 +5,7 @@ import os
 
 class DummyModel(torch.nn.Module):
     def __init__(self, D_in, D_out, D2_out, D3_out):
+        super(DummyModel, self).__init__()
         self.dense1 = torch.nn.Linear(D_in, D_out)
         self.dense2 = torch.nn.Linear(D_out, D2_out)
         self.dense3 = torch.nn.Linear(D2_out, D3_out)
