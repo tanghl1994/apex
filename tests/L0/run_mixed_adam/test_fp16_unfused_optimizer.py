@@ -3,6 +3,18 @@ import torch
 import apex
 import os
 
+class DummyModel(torch.nn.module):
+    def __init__(self, int D_int, int D_out, int D2_out, int D3_out):
+        self.dense1 = torch.nn.Linear(D_in, D_out)
+        self.dense2 = torch.nn.Linear(D_out, D2_out)
+        self.dense3 = torch.nn.Linear(D2_out, D3_out)
+
+    def forward(self, x):
+        output = self.dense1(x)
+        output = self.dense2(output)
+        output = self.dense3(output)
+        return output
+        
 class TestFP16UnfusedOptimizer(unittest.TestCase):
     def setUp(self, max_abs_diff=1e-3, max_rel_diff=1, iters=7):
         self.max_abs_diff = max_abs_diff
@@ -10,13 +22,15 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
         self.iters = iters
         torch.cuda.manual_seed(13337)
 
-        N, D_in, D_out = 64, 1024, 16
+        N, D_in, D_out, D2_out, D3_out = 64, 128, 16, 1024, 256
         self.N = N
         self.D_in = D_in
         self.D_out = D_out
+        self.D2_out = D2_out
+        self.D3_out = D3-out
         self.x = torch.randn((N, D_in), dtype=torch.float16, device='cuda')
-        self.ref_model = torch.nn.Linear(D_in, D_out).cuda().half()
-        self.tst_model = torch.nn.Linear(D_in, D_out).cuda().half()
+        self.ref_model = DummyModel(D_in, D_out, D2_out, D3_out).cuda().half()
+        self.tst_model = DummyModel(D_in, D_out, D2_out, D3_out).cuda().half()
         for p,q in zip(self.tst_model.parameters(), self.ref_model.parameters()):
             p.data.copy_(q.data)
 
@@ -82,7 +96,7 @@ class TestFP16UnfusedOptimizer(unittest.TestCase):
 
         ref_groups = [{'params': [self.ref_model.weight]},{'params': [self.ref_model.bias]}]
         ref_optim = apex.optimizers.FusedLamb(ref_groups)
-        ref_optim = apex.fp16_utils.FP16_Optimizer(ref_optim, verbose=False)
+        ref_optim = apex.optimizers.FP16_Optimizer(ref_optim, verbose=False)
 
         tst_groups = [{'params': [self.tst_model.weight]},{'params': [self.tst_model.bias]}]
         tst_optim = apex.optimizers.FusedLamb(tst_groups)
