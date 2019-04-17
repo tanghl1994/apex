@@ -293,6 +293,7 @@ __global__ void lamb_cuda_kernel_part2(
         const float b1,
         const float b2,
         const float max_coeff,
+        const float min_coeff,
         const float eps,
         const float grad_scale,
         const float step_size,
@@ -320,6 +321,9 @@ __global__ void lamb_cuda_kernel_part2(
             lamb_coeff = reg_w/reg_u;
             if (lamb_coeff > max_coeff){
                 lamb_coeff = max_coeff;
+            }
+            if (lamb_coeff < min_coeff){
+                lamb_coeff = min_coeff;
             }
         }
 
@@ -356,6 +360,7 @@ void fused_lamb_cuda(
         float beta1,
         float beta2,
         float max_coeff,
+        float min_coeff,
         float eps,
         float grad_scale,
         int step,
@@ -437,6 +442,7 @@ void fused_lamb_cuda(
                         beta1,
                         beta2,
                         max_coeff,
+                        min_coeff,
                         eps,
                         grad_scale,
                         step_size,
@@ -484,6 +490,7 @@ void fused_lamb_cuda(
                         beta1,
                         beta2,
                         max_coeff,
+                        min_coeff,
                         eps,
                         grad_scale,
                         step_size,
