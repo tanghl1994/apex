@@ -18,6 +18,7 @@ class FusedLamb(torch.optim.Optimizer):
         eps (float, optional): term added to the denominator to improve
             numerical stability. (default: 1e-8)
         weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
+        max_coeff(float, optional): maximum value of the lamb coefficient (default: 10.0)
         amsgrad (boolean, optional): whether to use the AMSGrad variant of this
             algorithm from the paper `On the Convergence of Adam and Beyond`_
             (default: False) NOT SUPPORTED in FusedAdam!
@@ -35,15 +36,15 @@ class FusedLamb(torch.optim.Optimizer):
     def __init__(self, params,
                  lr=1e-3, bias_correction = True,
                  betas=(0.9, 0.999), eps=1e-8, eps_inside_sqrt = False,
-                 weight_decay=0., max_grad_norm=0., amsgrad=False):
+                 weight_decay=0., max_grad_norm=0., max_coeff=10.0, amsgrad=False):
         global fused_lamb_cuda
         fused_lamb_cuda = importlib.import_module("fused_lamb_cuda")
 
         if amsgrad:
-            raise RuntimeError('FusedAdam does not support the AMSGrad variant.')
+            raise RuntimeError('FusedLamb does not support the AMSGrad variant.')
         defaults = dict(lr=lr, bias_correction=bias_correction,
                         betas=betas, eps=eps, weight_decay=weight_decay,
-                        max_grad_norm=max_grad_norm)
+                        max_grad_norm=max_grad_norm, max_coeff=max_coeff)
         super(FusedLamb, self).__init__(params, defaults)
         self.eps_mode = 0 if  eps_inside_sqrt else 1
         self.lamb_coeffs=[]
@@ -138,6 +139,7 @@ class FusedLamb(torch.optim.Optimizer):
 
                 exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
                 beta1, beta2 = group['betas']
+                max_coeff = group['max_coeff']
 
                 state['step'] += 1
 
@@ -150,6 +152,7 @@ class FusedLamb(torch.optim.Optimizer):
                                                     group['lr'],
                                                     beta1,
                                                     beta2,
+                                                    max_coeff,
                                                     group['eps'],
                                                     combined_scale,
                                                     state['step'],

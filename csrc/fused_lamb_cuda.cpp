@@ -3,7 +3,7 @@
 
 // CUDA forward declaration
 void fused_lamb_cuda(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor & v, at::Tensor & g, 
-                        float lr, float beta1, float beta2, float eps, float grad_scale, int step, int mode, int bias_correction, float decay,
+                        float lr, float beta1, float beta2, float max_coeff, float eps, float grad_scale, int step, int mode, int bias_correction, float decay,
                         at::Tensor & w_l2_i, at::Tensor & u_l2_i, at::Tensor & lamb_coeff_val );
 
 #define CHECK_CUDA(x) AT_ASSERTM(x.type().is_cuda(), #x " must be a CUDA tensor")
@@ -11,7 +11,7 @@ void fused_lamb_cuda(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Te
 #define CHECK_INPUT(x) CHECK_CUDA(x); CHECK_CONTIGUOUS(x)
 
 // C++ interface
-at::Tensor lamb(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor & v, at::Tensor & g, float lr, float beta1, float beta2, float eps, float grad_scale, int step, int mode, int bias_correction, float decay) {
+at::Tensor lamb(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor & v, at::Tensor & g, float lr, float beta1, float beta2, float max_coeff, float eps, float grad_scale, int step, int mode, int bias_correction, float decay) {
         CHECK_INPUT(p)
         if (p_copy.numel() > 0) CHECK_INPUT(p_copy);
         CHECK_INPUT(m);
@@ -33,7 +33,7 @@ at::Tensor lamb(at::Tensor & p, at::Tensor & p_copy, at::Tensor & m, at::Tensor 
 
         at::Tensor lamb_coeff_val = at::empty({1}, p.options().dtype(p.type().scalarType()==at::ScalarType::Half ? at::ScalarType::Float : p.type().scalarType()));
 
-        fused_lamb_cuda(p, p_copy, m, v, g, lr, beta1, beta2, eps, grad_scale, step, mode, bias_correction, decay, w_l2_i, u_l2_i, lamb_coeff_val);
+        fused_lamb_cuda(p, p_copy, m, v, g, lr, beta1, beta2, max_coeff, eps, grad_scale, step, mode, bias_correction, decay, w_l2_i, u_l2_i, lamb_coeff_val);
 
         return lamb_coeff_val;
 }
