@@ -318,8 +318,9 @@ __global__ void lamb_cuda_kernel_part2(
 
         if (reg_w !=0 and reg_u !=0){
             lamb_coeff = reg_w/reg_u;
-            if (lamb_coeff > max_coeff):
+            if (lamb_coeff > max_coeff){
                 lamb_coeff = max_coeff;
+            }
         }
 
         if(blockId == 0 and threadIdInBlock == 0)
