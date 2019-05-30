@@ -61,6 +61,13 @@ if "--cuda_ext" in sys.argv:
                                               'nvcc':['-O3', 
                                                       '--use_fast_math']}))
         ext_modules.append(
+            CUDAExtension(name='com_fused_adam_cuda',
+                          sources=['csrc/com_fused_adam_cuda.cpp',
+                                   'csrc/com_fused_adam_cuda_kernel.cu'], 
+                          extra_compile_args={'cxx': ['-O3',],
+                                              'nvcc':['-O3',
+                                              '--use_fast_math']}))
+        ext_modules.append(
             CUDAExtension(name='fused_lamb_cuda',
                           sources=['csrc/fused_lamb_cuda.cpp',
                                    'csrc/fused_lamb_cuda_kernel.cu'],
