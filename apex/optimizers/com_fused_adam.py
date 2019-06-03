@@ -1,6 +1,8 @@
 import types
 import torch
 import importlib
+from .Fused_compression import topk_compress
+
 
 class ComFusedAdam(torch.optim.Optimizer):
 
@@ -135,7 +137,7 @@ class ComFusedAdam(torch.optim.Optimizer):
 
                 exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
                 beta1, beta2 = group['betas']
-                model_update = torch.zeros_like(p.data)
+                model_update = topk_compress(grad,alpha=0.03)
 
                 state['step'] += 1
 
@@ -155,5 +157,4 @@ class ComFusedAdam(torch.optim.Optimizer):
                                      self.eps_mode,
                                      bias_correction,
                                      group['weight_decay'])
-                p.data = p.data - model_udpate
         return loss

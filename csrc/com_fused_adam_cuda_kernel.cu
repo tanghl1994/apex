@@ -21,7 +21,7 @@ template <typename T, typename GRAD_T>
 __global__ void com_adam_cuda_kernel(
         T* __restrict__ p,
         GRAD_T* __restrict__ p_copy, // For mixed precision training, pass NULL if not needed
-        T* __restrict__ model_update,
+        const GRAD_T* __restrict__ model_update,
         T* __restrict__ m,
         T* __restrict__ v,
         const GRAD_T * __restrict__ g,
@@ -43,17 +43,18 @@ __global__ void com_adam_cuda_kernel(
 
         for (int j = i; j < tsize; j+=totThreads) {
                 T scaled_grad = g[j]/grad_scale;
+                T scaled_model_update = model_update[j]/grad_scale;
                 m[j] = b1*m[j] + (1-b1)*scaled_grad;
-                v[j] = b2*v[j] + (1-b2)*scaled_grad*scaled_grad;
+                v[j] = b2*v[j] + (1-b2)*scaled_model_update*scaled_model_update;
                 float denom;
                 if (mode == ADAM_MODE_0)
                     denom = sqrtf(v[j] + eps);
                 else // Mode 1
                     denom = sqrtf(v[j]) + eps;
                 float update = (m[j]/denom) + (decay*p[j]);
-                model_update[j] = update;
-                //p[j] = p[j] - (step_size*update);
-                //if (p_copy != NULL) p_copy[j] = (GRAD_T) p[j];
+                //model_update[j] = update;
+                p[j] = p[j] - (step_size*update);
+                if (p_copy != NULL) p_copy[j] = (GRAD_T) p[j];
         }
 }
 
@@ -104,7 +105,7 @@ void com_fused_adam_cuda(
                 com_adam_cuda_kernel<accscalar_t, scalar_t><<<blocks,threadsPerBlock, 0, stream>>>(
                         p.data<accscalar_t>(),
                         p_copy.numel() ? p_copy.data<scalar_t>() : NULL,
-                        model_update.data<accscalar_t>(),
+                        model_update.data<scalar_t>(),
                         m.data<accscalar_t>(),
                         v.data<accscalar_t>(),
                         g.data<scalar_t>(),
