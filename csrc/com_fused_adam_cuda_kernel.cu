@@ -43,9 +43,9 @@ __global__ void com_adam_cuda_kernel(
 
         for (int j = i; j < tsize; j+=totThreads) {
                 T scaled_grad = g[j]/grad_scale;
-                T scaled_model_update = model_update[j]/grad_scale;
+                //T scaled_model_update = model_update[j]/grad_scale;
                 m[j] = b1*m[j] + (1-b1)*scaled_grad;
-                v[j] = b2*v[j] + (1-b2)*scaled_model_update*scaled_model_update;
+                v[j] = b2*v[j] + (1-b2)*scaled_grad*scaled_grad;
                 float denom;
                 if (mode == ADAM_MODE_0)
                     denom = sqrtf(v[j] + eps);

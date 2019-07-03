@@ -1,8 +1,8 @@
 import types
 import torch
 import importlib
-from .Fused_compression import topk_compress
-
+from .compression import topk_compress
+import torch.distributed as dist
 
 class ComFusedAdam(torch.optim.Optimizer):
 
@@ -40,6 +40,8 @@ class ComFusedAdam(torch.optim.Optimizer):
                  weight_decay=0., max_grad_norm=0., amsgrad=False):
         global com_fused_adam_cuda
         com_fused_adam_cuda = importlib.import_module("com_fused_adam_cuda")
+        global fused_adam_cuda
+        fused_adam_cuda = importlib.import_module("fused_adam_cuda")
         print("Using compressed update")
 
         if amsgrad:
@@ -49,6 +51,7 @@ class ComFusedAdam(torch.optim.Optimizer):
                         max_grad_norm=max_grad_norm)
         super(ComFusedAdam, self).__init__(params, defaults)
         self.eps_mode = 0 if  eps_inside_sqrt else 1
+        self.global_iter = 0
 
     def step(self, closure=None, grads=None, output_params=None, scale=1., grad_norms=None):
         """Performs a single optimization step.
@@ -134,17 +137,37 @@ class ComFusedAdam(torch.optim.Optimizer):
                     state['exp_avg'] = torch.zeros_like(p.data)
                     # Exponential moving average of squared gradient values
                     state['exp_avg_sq'] = torch.zeros_like(p.data)
+                    # Initialized the error buffer
+                    state['model_update'] = torch.zeros_like(p.data)
 
                 exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
                 beta1, beta2 = group['betas']
-                model_update = topk_compress(grad,alpha=0.03)
+                
+                model_update = state['model_update']
+                
+                if self.global_iter >60000000:
+                    model_update = state['model_update']
+                    fullgrad = grad.float()/combined_scale
+                    #scaled_error = model_update*combined_scale
+                    temp_grad = topk_compress(fullgrad + model_update  ,alpha=0.03)
+                    state['model_update'] = fullgrad + model_update - temp_grad
+                    #grad = temp_grad
+                    dist.all_reduce(temp_grad/dist.get_world_size())
+                    print("Using compressed gradients")
+                    grad = (temp_grad*combined_scale).half()
+                   # print('OK')
+                   #test_mask = grad == 0.0
+                   # print('After:  ', test_mask.sum()) 
+                else:
+                   # dist.all_reduce(grad)
+                   # grad=grad/dist.get_world_size()
+                    pass
 
                 state['step'] += 1
 
                 out_p = torch.tensor([], dtype = torch.float) if output_param is None else output_param
-                com_fused_adam_cuda.com_adam(p.data,
+                fused_adam_cuda.adam(p.data,
                                      out_p,
-                                     model_update,
                                      exp_avg,
                                      exp_avg_sq,
                                      grad,
@@ -157,4 +180,5 @@ class ComFusedAdam(torch.optim.Optimizer):
                                      self.eps_mode,
                                      bias_correction,
                                      group['weight_decay'])
+        self.global_iter +=1
         return loss
