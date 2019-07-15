@@ -3,6 +3,7 @@ from .com_fused_adam import ComFusedAdam
 from .com_fused_ecmomentum import ComFusedECMomentum
 from .com_fused_ecclipping import ComFusedECClipping
 from .com_fused_ecimplementation import ComFusedECImplementation
+from .com_fused_ecring import ComFusedECRing
 from .com_fused_test import ComFusedTest
 from .test_com_fused_adam import TestComFusedAdam
 from .fp16_optimizer import FP16_Optimizer

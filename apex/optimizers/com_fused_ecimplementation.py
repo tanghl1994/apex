@@ -1,10 +1,11 @@
 import types
 import torch
 import importlib
-from .tree_compress import *
+from .compression import *
 import torch.distributed as dist
 import time
 import gc
+from .simucomm import *
 
 class ComFusedECImplementation(torch.optim.Optimizer):
 
@@ -52,6 +53,7 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                         max_grad_norm=max_grad_norm)
         super(ComFusedECImplementation, self).__init__(params, defaults)
         self.eps_mode = 0 if  eps_inside_sqrt else 1
+        self.send_groups = [dist.new_group(ranks = [i,(i+1)%dist.get_world_size()]) for i in range(dist.get_world_size())]
 
     def _compute_grad_norm(self, fp16_grads_flat, norm_type=2):
         try:
@@ -63,7 +65,8 @@ class ComFusedECImplementation(torch.optim.Optimizer):
             return -1
         else:
             return norm
-
+        
+        
 
 
     def step(self, closure=None, grads=None, output_params=None, scale=1., grad_norms=None, adam_freeze=False, clip_key = True):
@@ -111,6 +114,10 @@ class ComFusedECImplementation(torch.optim.Optimizer):
 
         start_time = time.time()
 
+        
+        
+            
+
         for group, grads_this_group, output_params_this_group, grad_norm_group in zip(self.param_groups, grads_group, output_params_group, grad_norms):
             if grads_this_group is None:
                grads_this_group = [None]*len(group['params'])
@@ -133,9 +140,6 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                     clip = ((grad_norm / scale) + 1e-6) / group['max_grad_norm']
                    # if clip > 1:
                     #    combined_scale = clip * scale
-                
-                #print("Combined Scale is ", combined_scale)
-
                 #note: p.grad should not ever be set for correct operation of mixed precision optimizer that sometimes sends None gradients
                 if p.grad is None and grad is None:
                     continue
@@ -186,53 +190,56 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                      #   if (state['step']+1)%10 ==0:
                       #      print('Grad is:  ',grad[0:10])
                     ecbuffer = state['ecbuffer']
-                    temp_error = [torch.zeros_like(ecbuffer) for i in range(dist.get_world_size())]
-                    temp_exp = [torch.zeros_like(ecbuffer) for i in range(dist.get_world_size())]
+                    buffer_error = state['buffer_error']
+                    
                     scaled_grad = grad.float()/combined_scale
-                    buffer_exp = exp_avg * beta1 + (1-beta1)*scaled_grad
-                    dist.all_gather(temp_exp,buffer_exp)
-                    for grads in temp_exp:
-                        if self._compute_grad_norm(grads) == -1:
-                            print('Gradient Exploding')
-                            return True
-                    dist.all_gather(temp_error,ecbuffer)
-                    #if dist.get_rank() == 0:
-                     #   print('Before is :  ', temp_error[0])
-                    temp_final = ring_compress(temp_exp,temp_error)
-                    #if dist.get_rank() == 0:
-                     #   print('After is :  ', temp_error[0])
-                    state['buffer_error'] = temp_error[dist.get_rank()]
-                    
-                    #if dist.get_rank() == 0 or dist.get_rank()==16:
-                     #   if (state['step']+1)%10 ==0:
-                      #      print('Before is:  ',temp_final)
-                    
+                    temp_final = exp_avg * beta1 + (1-beta1)*scaled_grad
+                    #dummy_tensor = temp_final.clone().detach()
 
+                    #if dist.get_rank() == 0 or dist.get_rank() == 5:
+                     #   if (state['step']+1)%1 ==0:
+                      #      print('Before is:  ',temp_final[0:10])
+                    #dist.all_reduce(dummy_tensor)
+                    #dummy_tensor.mul_(1/dist.get_world_size())
+
+                    '''
+                    dummy_tensor = torch.zeros_like(temp_final) + (dist.get_rank() + 1)
+                    dummy_tensor[2] = 0.0
+                    dummy_error = torch.zeros_like(temp_final)
+                    dummy_buffer = torch.zeros_like(temp_final)
+                    if dist.get_rank() == 0:
+                        if (state['step']+1)%1 ==0:
+                            print('Before is:  ',torch.chunk(dummy_tensor,dist.get_world_size())[0][0:10])
+
+                    key = self.simusend(dummy_tensor,dummy_error,dummy_buffer,self.send_groups)
+                    if dist.get_rank() == 0:
+                        print('After is:  ',dummy_tensor[0:10])
+                    return 0'''
                     
-                    #if dist.get_rank() == 0 or dist.get_rank()==16:
-                     #   if (state['step']+1)%10 ==0:
-                      #      print('After is:  ',temp_exp[0:10])
+                   # dummy_buffer = torch.zeros_like(temp_final)
+                    key = sparse_simusend(temp_final,ecbuffer,buffer_error,self.send_groups,chunk_size = 2,idx = (state['step'] + 1)%2 )
+                    #trash_tensor = temp_final.data.clone().detach()
+                    '''if dist.get_rank() == 0:
+                        if (state['step']+1)%5 ==0:
+                            print('After1 is:  ',temp_final[0:10])
+                            print('After2 is:  ',dummy_tensor[0:10])
+                            print('Diff is  ', torch.norm(temp_final - dummy_tensor))'''
                     
-                   
-                    state['temp_final'] = temp_final
+                    state['temp_final'].set_(temp_final)
+                    state['buffer_error'].set_(buffer_error)
                     if self._compute_grad_norm(temp_final) == -1:
-                        myskip = True
-                        print("Compressed Gradient Exploding")
-                        return True
-                    else:
-                        pass
-                        #state['ecbuffer'].data.set_(temp_error[dist.get_rank()].data)
-
-                    #del temp_exp,temp_error
-                    #torch.cuda.empty_cache()
+                        print('Compressed Gradient Exploding')
+                        return -1
+                                           
+                    
 
         end_time = time.time()
-       # if dist.get_rank() == 0:
-           # print("Communication time overall for one step is", start_time - end_time)            
+        if dist.get_rank() == 0:
+            print("Communication time overall for one step is", start_time - end_time)            
                     
 
                     
-
+        
         for group, grads_this_group, output_params_this_group, grad_norm_group in zip(self.param_groups, grads_group, output_params_group, grad_norms):
         
             bias_correction = 1 if group['bias_correction'] else 0
@@ -247,6 +254,17 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                 beta1, beta2 = group['betas']
                 buffer_error = state['buffer_error']
                 temp_final = state['temp_final']
+
+                #if dist.get_rank() == 0:
+                   # print('I am Here!')
+                   # temp_start = time.time()
+                   # temp_scale,temp_sign,_ = imple_naive_compress(temp_final)
+                   # import numpy as np
+                   # encoder = np.packbits(temp_sign.cpu())
+                   # decoder = torch.from_numpy(np.unpackbits(encoder)).to(torch.device('cuda'))
+                   # temp_end = time.time()
+                   # print('Encoding and decoding would cost:  ', temp_end - temp_start)
+                
                 
                 
 
@@ -280,9 +298,11 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                 else:
                     state['ecbuffer'].data.set_(buffer_error)
                     exp_avg.set_(temp_final)
-                    #if dist.get_rank() == 0:
-                     #   if (state['step']+1)%1 ==0:
-                      #      print('After2 is:  ',exp_avg[0:10])
+                    #if dist.get_rank() == 0 or dist.get_rank() == 5 or dist.get_rank() == 20:
+                     #                       if (state['step']+1)%1 ==0:
+                      #                          print('After3 is:  ',exp_avg[0:10])
+                   
+                    #print('Xixi')
                     fused_mixed_cuda.mixed(p.data,
                                            out_p,
                                            exp_avg,
@@ -297,8 +317,10 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                                            self.eps_mode,
                                            bias_correction,
                                            group['weight_decay'])
+                    #print('I am Here')
 
                 state['step'] += 1
-
+                
+    
                                        
         return myskip

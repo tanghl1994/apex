@@ -214,8 +214,8 @@ class ComFusedECClipping(torch.optim.Optimizer):
                         return True
 
         end_time = time.time()
-        #if dist.get_rank() == 0:
-         #   print("Communication time overall for one step is", start_time - end_time)            
+        if dist.get_rank() == 0:
+            print("Communication time overall for one step is", start_time - end_time)            
                     
 
                     

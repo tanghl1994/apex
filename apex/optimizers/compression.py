@@ -21,6 +21,60 @@ import argparse
 
 from importlib import reload
 
+def imple_naive_compress(gradient):
+    l2 = gradient.norm()
+    sign_tensor = gradient.sign()
+    sign_tensor_l2 = sign_tensor.norm()
+    scale = l2 / sign_tensor_l2
+    diff = gradient - scale * sign_tensor
+    #sign_tensor = gradient / scale
+    sign_tensor = (sign_tensor + 1)/2
+    
+    return scale,sign_tensor,diff
+
+def test_naive_compress(gradient):
+    l2 = gradient.norm()
+   # sign_tensor = gradient.sign()
+   # sign_tensor_l2 = sign_tensor.norm()
+    scale = torch.zeros_like(gradient[0]) + 1.0
+    diff = torch.zeros_like(gradient)
+    sign_tensor = gradient.clone().detach()
+    sign_tensor = (sign_tensor + 1.0)/2.0
+    
+    return scale,sign_tensor,diff
+
+
+def imple_random_sparse_compress(gradient, alpha = 0.999):
+   
+    random_tensor = torch.rand_like(gradient)
+    mask_tensor = random_tensor < alpha
+    sign_tensor = gradient * mask_tensor.float()
+    
+    diff = gradient.data - sign_tensor.data
+    #sign_tensor = gradient.clone().detach()
+    #sign_tensor = (sign_tensor + 1.0)/2.0
+    
+    return sign_tensor,diff
+
+
+def imple_sparse_compress(gradient,alpha = 0.9):
+   
+    scale = torch.zeros_like(gradient[0]) + 1.0
+    buffer_tensor = torch.chunk(gradient,chunk_size)
+    sign_tensor = torch.chunk(torch.zeros_like(gradient), chunk_size)
+    sign_tensor[idx].set_(buffer_tensor[idx])
+    sign_tensor = torch.cat(sign_tensor)
+    
+    diff = gradient.data - sign_tensor.data
+    #sign_tensor = gradient.clone().detach()
+    #sign_tensor = (sign_tensor + 1.0)/2.0
+    
+    return sign_tensor,diff
+
+
+
+
+
 def naive_compress(gradient):
     l2 = gradient.norm()
     sign_tensor = gradient.sign()
