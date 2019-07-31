@@ -28,7 +28,6 @@ def imple_naive_compress(gradient):
     scale = l2 / sign_tensor_l2
     diff = gradient - scale * sign_tensor
     #sign_tensor = gradient / scale
-    sign_tensor = (sign_tensor + 1)/2
     
     return scale,sign_tensor,diff
 
@@ -39,7 +38,7 @@ def test_naive_compress(gradient):
     scale = torch.zeros_like(gradient[0]) + 1.0
     diff = torch.zeros_like(gradient)
     sign_tensor = gradient.clone().detach()
-    sign_tensor = (sign_tensor + 1.0)/2.0
+    #sign_tensor = (sign_tensor + 1.0)/2.0
     
     return scale,sign_tensor,diff
 
@@ -57,11 +56,26 @@ def imple_random_sparse_compress(gradient, alpha = 0.999):
     return sign_tensor,diff
 
 
-def imple_sparse_compress(gradient,alpha = 0.9):
+def imple_sparse_compress(gradient,his_tensor,chunk_size,idx):
    
     scale = torch.zeros_like(gradient[0]) + 1.0
     buffer_tensor = torch.chunk(gradient,chunk_size)
     sign_tensor = torch.chunk(torch.zeros_like(gradient), chunk_size)
+    sign_tensor[idx].set_(buffer_tensor[idx])
+    sign_tensor = torch.cat(sign_tensor)
+    
+    diff = gradient.data - sign_tensor.data
+    #sign_tensor = gradient.clone().detach()
+    #sign_tensor = (sign_tensor + 1.0)/2.0
+    
+    return sign_tensor,diff
+
+def advanced_sparse_compress(gradient,his_tensor,chunk_size,idx):
+   
+    scale = torch.zeros_like(gradient[0]) + 1.0
+    buffer_tensor = torch.chunk(gradient,chunk_size)
+    sign_tensor = torch.chunk(his_tensor.clone().detach(),chunk_size)
+    #sign_tensor = torch.chunk(torch.zeros_like(gradient), chunk_size)
     sign_tensor[idx].set_(buffer_tensor[idx])
     sign_tensor = torch.cat(sign_tensor)
     
@@ -84,6 +98,20 @@ def naive_compress(gradient):
 
 
     return gradient
+
+def chunk_naive_compress(gradient,chunk_size = 1):
+    grad_list = torch.chunk(gradient,chunk_size)
+    for grad in grad_list:
+        l2 = grad.norm()
+        sign_tensor = grad.sign()
+        sign_tensor_l2 = sign_tensor.norm()
+        scale = l2 / sign_tensor_l2
+        grad.set_(scale * sign_tensor)
+
+
+    return gradient
+
+    
 
 def tenary_compress(grad):
     thres = grad.abs().max()

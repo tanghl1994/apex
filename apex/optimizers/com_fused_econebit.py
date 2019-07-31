@@ -5,10 +5,9 @@ from .compression import *
 import torch.distributed as dist
 import time
 import gc
-from .central_simucomm import *
-from . import central_scheduler
+from .simucomm import *
 
-class ComFusedECCentral(torch.optim.Optimizer):
+class ComFusedECOnebit(torch.optim.Optimizer):
 
     """Implements Adam algorithm. Currently GPU-only.  Requires Apex to be installed via
     ``python setup.py install --cuda_ext --cpp_ext``.
@@ -52,17 +51,9 @@ class ComFusedECCentral(torch.optim.Optimizer):
         defaults = dict(lr=lr, bias_correction=bias_correction,
                         betas=betas, eps=eps, weight_decay=weight_decay,
                         max_grad_norm=max_grad_norm)
-        super(ComFusedECCentral, self).__init__(params, defaults)
+        super(ComFusedECOnebit, self).__init__(params, defaults)
         self.eps_mode = 0 if  eps_inside_sqrt else 1
-        w_size = dist.get_world_size()
-        self.group_list = [ [ [] for j in range(w_size) ] for i in range(w_size)]
-        for i in range(dist.get_world_size() - 1):
-            for j in range(dist.get_world_size() - 1 - i):
-                group = dist.new_group(ranks = [i+j+1,j])
-                self.group_list[i+j+ 1][j] = group
-                self.group_list[j][i+j+1] = group
-
-        self.worker_schedule = central_scheduler.generate_schedule_list(dist.get_world_size())
+        self.send_groups = [dist.new_group(ranks = [i,(i+1)%dist.get_world_size()]) for i in range(dist.get_world_size())]
 
     def _compute_grad_norm(self, fp16_grads_flat, norm_type=2):
         try:
@@ -74,8 +65,8 @@ class ComFusedECCentral(torch.optim.Optimizer):
             return -1
         else:
             return norm
-
-                
+        
+        
 
 
     def step(self, closure=None, grads=None, output_params=None, scale=1., grad_norms=None, adam_freeze=False, clip_key = True):
@@ -226,13 +217,16 @@ class ComFusedECCentral(torch.optim.Optimizer):
                     return 0'''
                     
                    # dummy_buffer = torch.zeros_like(temp_final)
-                    key = simucentral(temp_final,ecbuffer,buffer_error,self.group_list,self.worker_schedule)
+                    chunk_size = 5
+                    key = sparse_simusend(temp_final,exp_avg,ecbuffer,buffer_error,self.send_groups,chunk_size = chunk_size,idx = (state['step'] + 1)%chunk_size )
+                   # key = simusend(temp_final,ecbuffer,buffer_error,self.send_groups)
                     #trash_tensor = temp_final.data.clone().detach()
                     '''if dist.get_rank() == 0:
-                        if (state['step']+1)%5 ==0:
-                            print('After1 is:  ',temp_final[0:10])
-                            print('After2 is:  ',dummy_tensor[0:10])
-                            print('Diff is  ', torch.norm(temp_final - dummy_tensor))'''
+                        if (state['step']+1)%1 ==0:
+                            print('After1 is vector :  ',temp_final[0:10])
+                            print('After1 is error :  ',buffer_error[0:10])
+                            #print('Diff is  ', torch.norm(temp_final - dummy_tensor))
+                            '''
                     
                     state['temp_final'].set_(temp_final)
                     state['buffer_error'].set_(buffer_error)
@@ -307,9 +301,12 @@ class ComFusedECCentral(torch.optim.Optimizer):
                 else:
                     state['ecbuffer'].data.set_(buffer_error)
                     exp_avg.set_(temp_final)
-                    #if dist.get_rank() == 0 or dist.get_rank() == 5 or dist.get_rank() == 20:
-                     #                       if (state['step']+1)%1 ==0:
-                      #                          print('After3 is:  ',exp_avg[0:10])
+                    '''if dist.get_rank() == 0:
+                        if (state['step']+1)%1 ==0:
+                            #print('After 3 vector is:  ',exp_avg[0:10])
+                            print('After 3 buffer_error is:  ',buffer_error[0:10])
+                            print('After 3 error is:  ',state['ecbuffer'][0:10])
+                            '''
                    
                     #print('Xixi')
                     fused_mixed_cuda.mixed(p.data,

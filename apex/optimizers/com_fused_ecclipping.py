@@ -191,8 +191,11 @@ class ComFusedECClipping(torch.optim.Optimizer):
                     #buffer_avg.mul_(beta1).add_(1-beta1,scaled_grad)
                     
                     ecbuffer = state['ecbuffer']
-                    
-                    temp_exp = (naive_compress(buffer_exp + ecbuffer))
+                    if self._compute_grad_norm(ecbuffer) == -1:
+                        print('Getting error in ecbuffer')
+                        return True                    
+ 
+                    temp_exp = (chunk_naive_compress(buffer_exp + ecbuffer,chunk_size = 8))
                     #if dist.get_rank() == 0 or dist.get_rank()==16:
                      #   if (state['step']+1)%10 ==0:
                       #      print('Before is:  ',temp_exp[0:10])
@@ -265,10 +268,10 @@ class ComFusedECClipping(torch.optim.Optimizer):
                 else:
                     state['ecbuffer'].data.set_(temp_error.data)
                     temp_final_error = state['temp_final_error']
-                    temp_final_exp = naive_compress(temp_exp + temp_final_error)
+                    temp_final_exp = chunk_naive_compress(temp_exp + temp_final_error,chunk_size = 8)
                     state['temp_final_error'] = temp_exp + temp_final_error - temp_final_exp
                     exp_avg.set_(temp_final_exp)
-                    #if dist.get_rank() == 0:
+                    #if dist.get_rank() == 0 or dist.get_rank() == 10:
                      #   if (state['step']+1)%1 ==0:
                       #      print('After2 is:  ',exp_avg[0:10])
                     fused_mixed_cuda.mixed(p.data,

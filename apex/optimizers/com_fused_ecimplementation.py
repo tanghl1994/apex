@@ -178,7 +178,12 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                 if not adam_freeze:
                     dist.all_reduce(grad)
                     grad.mul_(1/dist.get_world_size())
-                    
+
+                    '''if dist.get_rank() == 0:
+                        if (state['step']+1)%1 ==0:
+                            print('After1 is vector :  ',exp_avg[0:10])
+                           # print('After1 is error :  ',buffer_error[0:10])
+                    '''
                        
                     if self._compute_grad_norm(grad) == -1:
                        myskip = True
@@ -194,11 +199,16 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                     
                     scaled_grad = grad.float()/combined_scale
                     temp_final = exp_avg * beta1 + (1-beta1)*scaled_grad
+                    Nankey = 0
+                    if self._compute_grad_norm(temp_final) == -1:
+                            print('Individual Gradient Exploding')
+                            Nankey = 1
                     #dummy_tensor = temp_final.clone().detach()
 
-                    #if dist.get_rank() == 0 or dist.get_rank() == 5:
-                     #   if (state['step']+1)%1 ==0:
-                      #      print('Before is:  ',temp_final[0:10])
+                    '''if dist.get_rank() == 0:
+                        if (state['step']+1)%1 ==0:
+                            print('Before is:  ',temp_final[0:10])
+                    '''
                     #dist.all_reduce(dummy_tensor)
                     #dummy_tensor.mul_(1/dist.get_world_size())
 
@@ -217,19 +227,26 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                     return 0'''
                     
                    # dummy_buffer = torch.zeros_like(temp_final)
-                    key = sparse_simusend(temp_final,ecbuffer,buffer_error,self.send_groups,chunk_size = 2,idx = (state['step'] + 1)%2 )
+                    chunk_size = 5
+                    dummy_tensor = temp_final.clone().detach()
+                    #key = sparse_simusend(temp_final,exp_avg,ecbuffer,buffer_error,self.send_groups,chunk_size = chunk_size,idx = (state['step'] + 1)%chunk_size )
+                    key = clean_sparse_simusend(Nankey,temp_final,exp_avg,ecbuffer,buffer_error,chunk_size = chunk_size,idx = (state['step'] + 1)%chunk_size )
+                    #key = simusend(temp_final,ecbuffer,buffer_error,self.send_groups)
                     #trash_tensor = temp_final.data.clone().detach()
-                    '''if dist.get_rank() == 0:
-                        if (state['step']+1)%5 ==0:
-                            print('After1 is:  ',temp_final[0:10])
-                            print('After2 is:  ',dummy_tensor[0:10])
-                            print('Diff is  ', torch.norm(temp_final - dummy_tensor))'''
+                    if dist.get_rank() == 0:
+                        if (state['step']+1)%1 ==0:
+                            print('After1 is vector :  ',temp_final[0:10])
+                            print('After1 is error :  ',buffer_error[0:10])
+                            #print('After1 is dummy_tensor :  ',dummy_tensor[0:10])
+                            #print('Diff is  ', torch.norm(temp_final - dummy_tensor))
+                            
                     
                     state['temp_final'].set_(temp_final)
                     state['buffer_error'].set_(buffer_error)
-                    if self._compute_grad_norm(temp_final) == -1:
+                    if self._compute_grad_norm(temp_final) == -1 or key == -1:
                         print('Compressed Gradient Exploding')
                         return -1
+                    
                                            
                     
 
@@ -298,9 +315,12 @@ class ComFusedECImplementation(torch.optim.Optimizer):
                 else:
                     state['ecbuffer'].data.set_(buffer_error)
                     exp_avg.set_(temp_final)
-                    #if dist.get_rank() == 0 or dist.get_rank() == 5 or dist.get_rank() == 20:
-                     #                       if (state['step']+1)%1 ==0:
-                      #                          print('After3 is:  ',exp_avg[0:10])
+                    '''if dist.get_rank() == 0:
+                        if (state['step']+1)%1 ==0:
+                            print('After 3 vector is:  ',exp_avg[0:10])
+                            #print('After 3 buffer_error is:  ',buffer_error[0:10])
+                            print('After 3 error is:  ',state['ecbuffer'][0:10])
+                            '''
                    
                     #print('Xixi')
                     fused_mixed_cuda.mixed(p.data,
