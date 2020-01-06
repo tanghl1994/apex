@@ -2,6 +2,7 @@ from .fused_adam import FusedAdam
 from .com_fused_adam import ComFusedAdam
 from .com_fused_ecmomentum import ComFusedECMomentum
 from .com_fused_ecclipping import ComFusedECClipping
+from .com_fused_ecload import ComFusedECLoad
 from .com_fused_ecupdate import ComFusedECUpdate
 from .com_fused_ecimplementation import ComFusedECImplementation
 from .com_fused_econebit import ComFusedECOnebit

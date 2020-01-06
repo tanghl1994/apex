@@ -2,7 +2,8 @@ import torch.distributed as dist
 import torch
 import argparse
 #from temp_optim import simucomm
-from central_simucomm import *
+from newtestsimucomm import *
+import torch.multiprocessing as mp
 
 def sam_gather(tensor,dest,group_list,async_op = False): 
     if dist.get_rank() == dest:
@@ -83,36 +84,44 @@ parser = argparse.ArgumentParser()
 # Required_parameter
 parser.add_argument("--local_rank",
                     type=int,
-                    default=-1,
+                    default=0,
                     help="local_rank for distributed training on gpus")
 
-dist.init_process_group(backend='nccl')
-                    
-w_size = dist.get_world_size()
-group_list = [ [ [] for j in range(w_size) ] for i in range(w_size)]
-for i in range(dist.get_world_size() - 1): 
-    for j in range(dist.get_world_size() - i - 1): 
+#dist.init_process_group(backend='nccl')
+def testsimu(gpu,w_size):
+    dist.init_process_group(init_method='tcp://127.0.0.1:8008',backend='nccl',rank=gpu,world_size=w_size)
+    print(dist.get_world_size())                    
+    #w_size = dist.get_world_size()
+    group_list = [dist.new_group(ranks = [i,(i+1)%dist.get_world_size()]) for i in range(dist.get_world_size())]
+    '''group_list = [ [ [] for j in range(w_size) ] for i in range(w_size)]
+    for i in range(dist.get_world_size() - 1): 
+        for j in range(dist.get_world_size() - i - 1): 
         #if dist.get_rank() == 0:
          #   print('Creating group ',j,' to ',(i+j+1))
-        group = dist.new_group(ranks = [i+j+1,j])
-        group_list[j][j + i + 1] = group
-        group_list[j + i + 1][j] = group
+            group = dist.new_group(ranks = [i+j+1,j])
+            group_list[j][j + i + 1] = group
+            group_list[j + i + 1][j] = group'''
 
-args = parser.parse_args()
-device = torch.device("cuda", args.local_rank)
+    args = parser.parse_args()
+    device = torch.device("cuda", gpu)
 
-dim = 10 * dist.get_world_size()
-a = torch.rand(dim).to(device)
-if dist.get_rank() == 0:
-    print('a is:  ', a[0:10])
-b = a.clone().detach()
-simucentral(a,group_list)
-dist.all_reduce(b)
-if dist.get_rank() == 0:
-    print('My algorithm output is: ', a[0:10])
-    print('AllReduce output is: ', b[0:10])
+    dim = 10 * dist.get_world_size()
+    a = (torch.zeros(dim) + dist.get_rank() + 1).to(device)
+    if dist.get_rank() == 0:
+        print('a is:  ', a[0:10])
+    b = a.clone().detach()
+    temp1 = torch.zeros_like(a)
+    temp2 = torch.zeros_like(a)
+    simusend(a,temp1,temp2,group_list)
+    dist.all_reduce(b)
+    b /= w_size
+    if dist.get_rank() == 0:
+        print('My algorithm output is: ', a[0:10])
+        print('AllReduce output is: ', b[0:10])
 
-
+if __name__ == '__main__':
+    w_size = 4
+    mp.spawn(testsimu,nprocs=w_size,args=([w_size]))
 
         
 

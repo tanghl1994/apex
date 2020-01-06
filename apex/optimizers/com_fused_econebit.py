@@ -217,16 +217,16 @@ class ComFusedECOnebit(torch.optim.Optimizer):
                     return 0'''
                     
                    # dummy_buffer = torch.zeros_like(temp_final)
-                    chunk_size = 5
-                    key = sparse_simusend(temp_final,exp_avg,ecbuffer,buffer_error,self.send_groups,chunk_size = chunk_size,idx = (state['step'] + 1)%chunk_size )
-                   # key = simusend(temp_final,ecbuffer,buffer_error,self.send_groups)
+                    #chunk_size = 5
+                    #key = sparse_simusend(temp_final,exp_avg,ecbuffer,buffer_error,self.send_groups,chunk_size = chunk_size,idx = (state['step'] + 1)%chunk_size )
+                    key = simusend(temp_final,ecbuffer,buffer_error,self.send_groups)
                     #trash_tensor = temp_final.data.clone().detach()
-                    '''if dist.get_rank() == 0:
-                        if (state['step']+1)%1 ==0:
+                    if dist.get_rank() == 0:
+                        if (state['step']+1)%10 ==0:
                             print('After1 is vector :  ',temp_final[0:10])
                             print('After1 is error :  ',buffer_error[0:10])
                             #print('Diff is  ', torch.norm(temp_final - dummy_tensor))
-                            '''
+                            
                     
                     state['temp_final'].set_(temp_final)
                     state['buffer_error'].set_(buffer_error)
