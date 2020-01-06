@@ -1,4 +1,4 @@
-from .compression import *
+from compression import *
 import torch
 import torch.distributed as dist
 
@@ -85,7 +85,7 @@ def simusend(origin_tensor, origin_error, buffer_error, send_groups):
         
 
         pos = (pos + 1)%w_size
-        tensor_list[pos] = (1 - 1/(t+2)) * scale_list[pos] * sign_list[pos].float() + (1/(t+2)) * origin_list[pos]
+        tensor_list[pos] = (1 - 1/(t+2)) * scale_list[pos] * sign_list[pos].float() + (1/(t+2))*origin_list[pos]
         '''if dist.get_rank() == 1 and t==0:
                 print('After transform gets ',(2 * sign_list[pos].float() - 1)[0:10])
                 print('But the origin tensor is  ',origin_list[pos][0:10])
@@ -143,8 +143,8 @@ def simusend(origin_tensor, origin_error, buffer_error, send_groups):
         tensor_list[pos] = scale_list[pos] * sign_list[pos].float()
         #print(tensor_list[pos])
     final_tensor = torch.cat(tensor_list)
-    origin_tensor.set_(final_tensor.mul_(1/w_size))
-    buffer_error.set_((torch.cat(error_list)).mul_(1/w_size))
+    origin_tensor.set_(final_tensor)
+    buffer_error.set_(torch.cat(error_list))
     #print(final_tensor[0:5])
     #if dist.get_rank() == 0 or dist.get_rank() == 5:
      #   print(tensor_list[0])

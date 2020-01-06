@@ -4,10 +4,8 @@ import importlib
 from .compression import *
 import torch.distributed as dist
 import time
-import gc
-from .simucomm import *
 
-class ComFusedECOnebit(torch.optim.Optimizer):
+class ComFusedECLoad(torch.optim.Optimizer):
 
     """Implements Adam algorithm. Currently GPU-only.  Requires Apex to be installed via
     ``python setup.py install --cuda_ext --cpp_ext``.
@@ -39,7 +37,7 @@ class ComFusedECOnebit(torch.optim.Optimizer):
 
     def __init__(self, params,
                  lr=1e-3, bias_correction = True,
-                 betas=(0.9, 0.999), eps=1e-8, eps_inside_sqrt = False,
+                 betas=(0.9, 0.999), eps=1e-6, eps_inside_sqrt = False,
                  weight_decay=0., max_grad_norm=0., amsgrad=False):
         global fused_adam_cuda
         fused_adam_cuda = importlib.import_module("fused_adam_cuda")
@@ -51,9 +49,8 @@ class ComFusedECOnebit(torch.optim.Optimizer):
         defaults = dict(lr=lr, bias_correction=bias_correction,
                         betas=betas, eps=eps, weight_decay=weight_decay,
                         max_grad_norm=max_grad_norm)
-        super(ComFusedECOnebit, self).__init__(params, defaults)
+        super(ComFusedECLoad, self).__init__(params, defaults)
         self.eps_mode = 0 if  eps_inside_sqrt else 1
-        self.send_groups = [dist.new_group(ranks = [i,(i+1)%dist.get_world_size()]) for i in range(dist.get_world_size())]
 
     def _compute_grad_norm(self, fp16_grads_flat, norm_type=2):
         try:
@@ -65,8 +62,73 @@ class ComFusedECOnebit(torch.optim.Optimizer):
             return -1
         else:
             return norm
+
+    def load_dom2(self,load_path):
+        print('begin')
         
+        for group in self.param_groups:
+            for p in group['params']:
+                state = self.state[p]
+                state['step'] = 0
+                # Exponential moving average of gradient values
+                state['exp_avg'] = torch.zeros_like(p.data)
+                # Exponential moving average of squared gradient values
+                state['exp_avg_sq'] = torch.zeros_like(p.data).float()
+                state['ecbuffer'] = torch.zeros_like(p.data)
+                state['temp_error'] = torch.zeros_like(p.data)
+                state['temp_exp'] = torch.zeros_like(p.data)
+                #state['temp_final_exp'] = torch.zeros_like(p.data)
+                state['temp_final_error'] = torch.zeros_like(p.data)
+                #optim_state = optim_state_dict['state'][optim_p]
+                state['exp_avg_sq'] = torch.zeros_like(p.data)
+
+        checkpoint_state_dict = torch.load(load_path, map_location=torch.device("cpu"))
+        self.load_state_dict(checkpoint_state_dict['optimizer_state_dict']['optimizer_state_dict'])
+
+        for group in self.param_groups:
+            for p in group['params']:
+                state = self.state[p]
+                state['step'] = 0
+                # Exponential moving average of gradient values
+                state['exp_avg'] = torch.zeros_like(p.data)
+                # Exponential moving average of squared gradient values
+                state['exp_avg_sq'] = torch.zeros_like(p.data).float()
+                state['ecbuffer'] = torch.zeros_like(p.data)
+                state['temp_error'] = torch.zeros_like(p.data)
+                state['temp_exp'] = torch.zeros_like(p.data)
+                #state['temp_final_exp'] = torch.zeros_like(p.data)
+                state['temp_final_error'] = torch.zeros_like(p.data)
+                #optim_state = optim_state_dict['state'][optim_p]
+                #state['exp_avg_sq'].set_(optim_state['exp_avg_sq'])
         
+        del checkponint_state_dict
+        print('Successfully Update exp_avg_sq')
+
+    def load_dom(self, load_path):
+        print('begin')
+        optim_state_dict = torch.load(load_path, map_location=torch.device("cpu"))['optimizer_state_dict']['optimizer_state_dict']
+        print('OK')
+        for group,optim_group in zip(self.param_groups,optim_state_dict['param_groups']):
+            for p,optim_p in zip(group['params'],optim_group['params']):
+                state = self.state[p]
+                if len(state) == 0:
+                    state['step'] = 0
+                    # Exponential moving average of gradient values
+                    state['exp_avg'] = torch.zeros_like(p.data)
+                    # Exponential moving average of squared gradient values
+                    state['exp_avg_sq'] = torch.zeros_like(p.data).float()
+                    state['ecbuffer'] = torch.zeros_like(p.data)
+                    state['temp_error'] = torch.zeros_like(p.data)
+                    state['temp_exp'] = torch.zeros_like(p.data)
+                    #state['temp_final_exp'] = torch.zeros_like(p.data)
+                    state['temp_final_error'] = torch.zeros_like(p.data)
+                optim_state = optim_state_dict['state'][optim_p]
+                state['exp_avg_sq'].data.set_(optim_state['exp_avg_sq'].to(p.data.get_device()))
+
+        del optim_state_dict
+        print('Successfully Update exp_avg_sq')
+
+
 
 
     def step(self, closure=None, grads=None, output_params=None, scale=1., grad_norms=None, adam_freeze=False, clip_key = True):
@@ -114,10 +176,6 @@ class ComFusedECOnebit(torch.optim.Optimizer):
 
         start_time = time.time()
 
-        
-        
-            
-
         for group, grads_this_group, output_params_this_group, grad_norm_group in zip(self.param_groups, grads_group, output_params_group, grad_norms):
             if grads_this_group is None:
                grads_this_group = [None]*len(group['params'])
@@ -140,6 +198,9 @@ class ComFusedECOnebit(torch.optim.Optimizer):
                     clip = ((grad_norm / scale) + 1e-6) / group['max_grad_norm']
                    # if clip > 1:
                     #    combined_scale = clip * scale
+                
+                #print("Combined Scale is ", combined_scale)
+
                 #note: p.grad should not ever be set for correct operation of mixed precision optimizer that sometimes sends None gradients
                 if p.grad is None and grad is None:
                     continue
@@ -158,18 +219,19 @@ class ComFusedECOnebit(torch.optim.Optimizer):
                     # Exponential moving average of squared gradient values
                     state['exp_avg_sq'] = torch.zeros_like(p.data)
                     state['ecbuffer'] = torch.zeros_like(p.data)
-                    state['buffer_error'] = torch.zeros_like(p.data)
-                    state['temp_final'] = torch.zeros_like(p.data)
-
-                if not ('buffer_error' in state):
-                    state['buffer_error'] = torch.zeros_like(p.data)
+                    state['temp_error'] = torch.zeros_like(p.data)
+                    state['temp_exp'] = torch.zeros_like(p.data)
+                    #state['temp_final_exp'] = torch.zeros_like(p.data)
+                    state['temp_final_error'] = torch.zeros_like(p.data)
 
                 exp_avg_sq = state['exp_avg_sq']
                 exp_avg = state['exp_avg']
 
                 beta1, beta2 = group['betas']
-                
-                temp_final = state['temp_final']
+                temp_error = state['temp_error']
+                temp_exp = state['temp_exp']
+                if not ('temp_final_error' in state):
+                    state['temp_final_error'] = torch.zeros_like(p.data)
                 #model_update = state['model_update']
 
                 
@@ -189,52 +251,37 @@ class ComFusedECOnebit(torch.optim.Optimizer):
                     #if dist.get_rank() == 0 or dist.get_rank()==16:
                      #   if (state['step']+1)%10 ==0:
                       #      print('Grad is:  ',grad[0:10])
-                    ecbuffer = state['ecbuffer']
-                    buffer_error = state['buffer_error']
-                    
+                      
                     scaled_grad = grad.float()/combined_scale
-                    temp_final = exp_avg * beta1 + (1-beta1)*scaled_grad
-                    #dummy_tensor = temp_final.clone().detach()
-
-                    #if dist.get_rank() == 0 or dist.get_rank() == 5:
-                     #   if (state['step']+1)%1 ==0:
-                      #      print('Before is:  ',temp_final[0:10])
-                    #dist.all_reduce(dummy_tensor)
-                    #dummy_tensor.mul_(1/dist.get_world_size())
-
-                    '''
-                    dummy_tensor = torch.zeros_like(temp_final) + (dist.get_rank() + 1)
-                    dummy_tensor[2] = 0.0
-                    dummy_error = torch.zeros_like(temp_final)
-                    dummy_buffer = torch.zeros_like(temp_final)
-                    if dist.get_rank() == 0:
-                        if (state['step']+1)%1 ==0:
-                            print('Before is:  ',torch.chunk(dummy_tensor,dist.get_world_size())[0][0:10])
-
-                    key = self.simusend(dummy_tensor,dummy_error,dummy_buffer,self.send_groups)
-                    if dist.get_rank() == 0:
-                        print('After is:  ',dummy_tensor[0:10])
-                    return 0'''
+                    buffer_exp = exp_avg * (beta1) + (1-beta1)*scaled_grad
+                    #buffer_avg.mul_(beta1).add_(1-beta1,scaled_grad)
                     
-                   # dummy_buffer = torch.zeros_like(temp_final)
-                    #chunk_size = 5
-                    #key = sparse_simusend(temp_final,exp_avg,ecbuffer,buffer_error,self.send_groups,chunk_size = chunk_size,idx = (state['step'] + 1)%chunk_size )
-                    key = simusend(temp_final,ecbuffer,buffer_error,self.send_groups)
-                    #trash_tensor = temp_final.data.clone().detach()
-                    if dist.get_rank() == 0:
-                        if (state['step']+1)%10 ==0:
-                            print('After1 is vector :  ',temp_final[0:10])
-                            print('After1 is error :  ',buffer_error[0:10])
-                            #print('Diff is  ', torch.norm(temp_final - dummy_tensor))
-                            
+                    ecbuffer = state['ecbuffer']
+                    if self._compute_grad_norm(ecbuffer) == -1:
+                        print('Getting error in ecbuffer')
+                        return True                    
+ 
+                    temp_exp = (chunk_naive_compress(buffer_exp + ecbuffer,chunk_size = 1))
+                    #temp_exp = buffer_exp + ecbuffer
+                    #if dist.get_rank() == 0 or dist.get_rank()==16:
+                     #   if (state['step']+1)%10 ==0:
+                      #      print('Before is:  ',temp_exp[0:10])
+                    temp_error = (buffer_exp.data + ecbuffer.data) - temp_exp
+
+                    dist.all_reduce(temp_exp)
+                    temp_exp.mul_(1/dist.get_world_size())
+                    #if dist.get_rank() == 0 or dist.get_rank()==16:
+                     #   if (state['step']+1)%10 ==0:
+                      #      print('After is:  ',temp_exp[0:10])
                     
-                    state['temp_final'].set_(temp_final)
-                    state['buffer_error'].set_(buffer_error)
-                    if self._compute_grad_norm(temp_final) == -1:
-                        print('Compressed Gradient Exploding')
-                        return -1
-                                           
                     
+                        
+                    state['temp_exp'] = temp_exp
+                    state['temp_error'] = temp_error
+                    if self._compute_grad_norm(temp_exp) == -1:
+                        myskip = True
+                        print("Compressed Gradient Exploding")
+                        return True
 
         end_time = time.time()
         if dist.get_rank() == 0:
@@ -242,7 +289,7 @@ class ComFusedECOnebit(torch.optim.Optimizer):
                     
 
                     
-        
+
         for group, grads_this_group, output_params_this_group, grad_norm_group in zip(self.param_groups, grads_group, output_params_group, grad_norms):
         
             bias_correction = 1 if group['bias_correction'] else 0
@@ -255,27 +302,14 @@ class ComFusedECOnebit(torch.optim.Optimizer):
                 exp_avg_sq = state['exp_avg_sq']
                 exp_avg = state['exp_avg']
                 beta1, beta2 = group['betas']
-                buffer_error = state['buffer_error']
-                temp_final = state['temp_final']
-
-                #if dist.get_rank() == 0:
-                   # print('I am Here!')
-                   # temp_start = time.time()
-                   # temp_scale,temp_sign,_ = imple_naive_compress(temp_final)
-                   # import numpy as np
-                   # encoder = np.packbits(temp_sign.cpu())
-                   # decoder = torch.from_numpy(np.unpackbits(encoder)).to(torch.device('cuda'))
-                   # temp_end = time.time()
-                   # print('Encoding and decoding would cost:  ', temp_end - temp_start)
-                
+                temp_error = state['temp_error']
+                temp_exp = state['temp_exp']
                 
                 
 
                 out_p = torch.tensor([], dtype = torch.float) if output_param is None else output_param
                 if not adam_freeze:
                     #print(exp_avg)
-                    #if dist.get_rank() == 0:
-                     #   print("I am Here!")
                     if group['max_grad_norm'] > 0 and clip_key:
                         grad_norm = torch.norm(grad.float())
                         clip = ((grad_norm / scale) + 1e-6) / group['max_grad_norm']
@@ -299,16 +333,15 @@ class ComFusedECOnebit(torch.optim.Optimizer):
                                          bias_correction,
                                          group['weight_decay'])
                 else:
-                    state['ecbuffer'].data.set_(buffer_error)
-                    exp_avg.set_(temp_final)
-                    '''if dist.get_rank() == 0:
-                        if (state['step']+1)%1 ==0:
-                            #print('After 3 vector is:  ',exp_avg[0:10])
-                            print('After 3 buffer_error is:  ',buffer_error[0:10])
-                            print('After 3 error is:  ',state['ecbuffer'][0:10])
-                            '''
-                   
-                    #print('Xixi')
+                    state['ecbuffer'].data.set_(temp_error.data)
+                    temp_final_error = state['temp_final_error']
+                    temp_final_exp = chunk_naive_compress(temp_exp + temp_final_error,chunk_size = 1)
+                    #temp_final_exp = temp_exp + temp_final_error
+                    state['temp_final_error'] = temp_exp + temp_final_error - temp_final_exp
+                    exp_avg.set_(temp_final_exp)
+                    #if dist.get_rank() == 0 or dist.get_rank() == 10:
+                     #   if (state['step']+1)%1 ==0:
+                      #      print('After2 is:  ',exp_avg[0:10])
                     fused_mixed_cuda.mixed(p.data,
                                            out_p,
                                            exp_avg,
@@ -323,10 +356,8 @@ class ComFusedECOnebit(torch.optim.Optimizer):
                                            self.eps_mode,
                                            bias_correction,
                                            group['weight_decay'])
-                    #print('I am Here')
 
                 state['step'] += 1
-                
-    
+
                                        
         return myskip

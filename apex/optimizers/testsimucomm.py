@@ -1,4 +1,4 @@
-from .compression import *
+from compression import *
 import torch
 import torch.distributed as dist
 
@@ -38,7 +38,7 @@ def simusend(origin_tensor, origin_error, buffer_error, send_groups):
         #print('Pos is: ',pos)
         #if dist.get_rank() == 0:
          #   print('Step is : ', t, ' original vector leads to  ',tensor_list[0][0:10],' and ', error_list[0][0:10])
-        scale_list[pos],sign_list[pos],diff = imple_naive_compress(tensor_list[pos] + ori_error_list[pos])
+        scale_list[pos],sign_list[pos],diff = test_naive_compress(tensor_list[pos] + ori_error_list[pos])
         error_list[pos].set_(diff)
         #if dist.get_rank() == 0:
          #   print('Step is : ', t, ' compression leads to  ',sign_list[0][0:10])
@@ -85,7 +85,7 @@ def simusend(origin_tensor, origin_error, buffer_error, send_groups):
         
 
         pos = (pos + 1)%w_size
-        tensor_list[pos] = (1 - 1/(t+2)) * scale_list[pos] * sign_list[pos].float() + (1/(t+2)) * origin_list[pos]
+        tensor_list[pos] = scale_list[pos] * sign_list[pos].float() + origin_list[pos]
         '''if dist.get_rank() == 1 and t==0:
                 print('After transform gets ',(2 * sign_list[pos].float() - 1)[0:10])
                 print('But the origin tensor is  ',origin_list[pos][0:10])
@@ -93,7 +93,7 @@ def simusend(origin_tensor, origin_error, buffer_error, send_groups):
             print('Step is : ', t, ' leads to  ',tensor_list[0][0:10])'''
         
     #pos = (pos + 1)%w_size
-    scale_list[pos],sign_list[pos],diff = imple_naive_compress(tensor_list[pos] + ori_error_list[pos])
+    scale_list[pos],sign_list[pos],diff = test_naive_compress(tensor_list[pos] + ori_error_list[pos])
     error_list[pos].set_(diff)
     tensor_list[pos] = scale_list[pos] * sign_list[pos].float()
     #print('step 1 finished')
