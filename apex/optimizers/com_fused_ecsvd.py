@@ -64,7 +64,7 @@ class ComFusedECSVD(torch.optim.Optimizer):
             return norm
 
 
-    def _orthogonalize(matrix):
+    def _orthogonalize(self,matrix):
         n, m = matrix.shape
         for i in range(m):
             # Normalize the i'th column
@@ -77,20 +77,28 @@ class ComFusedECSVD(torch.optim.Optimizer):
                 rest -= torch.sum(col * rest, dim=0) * col
 
     def _warmup(self,matrix,rnk):
+        print('SVD begins')
         u,s,v = torch.svd(matrix)
+        print('SVD finished')
 
         m = matrix.shape[0]
         n = matrix.shape[1]
         rnk = min(m,n,rnk)
-        p = torch.mm(u,torch.diag(s))[:,:rnk]
-        q = v[:,:rnk]
-        return p,q
+        q = torch.mm(v,torch.diag(s))[:,:rnk]
+        p = u[:,:rnk]
+        return p.contiguous(),q.contiguous()
 
 
+    def _findlen(self,numb):
+        m = int(np.sqrt(numb))
+        for i in range(m):
+            if numb % m == 0:
+                return m
+            else:
+                m -= 1
 
 
-
-    def step(self, closure=None, grads=None, output_params=None, scale=1., grad_norms=None, adam_freeze=False, rnk = 2,
+    def step(self, closure=None, grads=None, output_params=None, scale=1., grad_norms=None, adam_freeze=False, rnk = 300,
              clip_key=True):
         """Performs a single optimization step.
 
@@ -181,13 +189,17 @@ class ComFusedECSVD(torch.optim.Optimizer):
                     state['temp_exp'] = torch.zeros_like(p.data)
                     # state['temp_final_exp'] = torch.zeros_like(p.data)
                     state['temp_final_error'] = torch.zeros_like(p.data)
-                    state['ComQ'] = None
+                    state['comQ'] = None
                     state['temp_P'] = None
                     state['temp_Q'] = None
 
                 exp_avg_sq = state['exp_avg_sq']
                 exp_avg = state['exp_avg']
                 beta1, beta2 = group['betas']
+                if 'comQ' not in state.keys():
+                    state['comQ'] = None
+                    state['temp_P'] = None
+                    state['temp_Q'] = None
                 comQ = state['comQ']
 
                 if not ('temp_final_error' in state):
@@ -216,32 +228,61 @@ class ComFusedECSVD(torch.optim.Optimizer):
                     buffer_exp = exp_avg * beta1 + (1 - beta1) * scaled_grad + ecbuffer.data
                     # buffer_avg.mul_(beta1).add_(1-beta1,scaled_grad)
 
+                    #print(len(buffer_exp)) 
+                    matlen = self._findlen(len(buffer_exp))
+                    #print('matlen = ', matlen)
+                    #tlen = matlen**2
+                    matrix = buffer_exp.view(matlen,-1)
+                    qlen = int(len(buffer_exp) / matlen)
+                    #print(qlen)
                     if comQ is None:
-                        P, Q = self._warmup(exp_avg, rnk)
-                        comQ.set_(Q)
-                        state['temp_P'] = P
-                        state['temp_Q'] = Q
+                        #P = torch.zeros(matlen,rnk).to(buffer_exp.get_device()) + 1.0
+                        print('Finish P')
+                        #Q = torch.zeros(qlen,rnk).to(buffer_exp.get_device()) + 1.0
+                        P = torch.zeros_like(matrix)[:,:rnk].contiguous()
+                        Q = torch.zeros_like(matrix.t())[:,:rnk].contiguous()
+                        print(P.shape)
+                        print(Q.shape)
 
+                        if dist.get_rank() == 0:             
+                            P, Q = self._warmup(matrix,rnk)
+                        dist.broadcast(P,src=0)
+                        dist.broadcast(Q,src=0)
+                        print('Finish Q')
+                        comQ = torch.zeros_like(Q) + Q
+                        state['comQ'] = (comQ)
+                        state['temp_P'] = torch.zeros_like(P) + P
+                        state['temp_Q'] = torch.zeros_like(Q) + Q
 
+                    #print('I am Here')
                     if self._compute_grad_norm(ecbuffer) == -1:
                         print('Getting error in ecbuffer')
                         return True
 
                     temp_P = state['temp_P']
                     temp_Q = state['temp_Q']
+                    temp_exp = state['temp_exp']
 
-                    matlen = int(np.sqrt(len(buffer_exp)))
-                    matrix = buffer_exp.view(matlen,-1)
+                    #if dist.get_rank() == 0:
+                    #    print('ComQ is :',comQ[0,0:10])
+                        #print('Temp_Q is :',temp_Q[0,0:10])
 
-                    torch.matmul(matrix, comQ, out=temp_P)
+                    torch.matmul(matrix.float(), comQ, out=temp_P)
+                    #if dist.get_rank() == 0:
+                    #    print('Step1 temp_P is :',temp_P[0,0:10])
                     dist.all_reduce(temp_P)
                     temp_P /= dist.get_world_size()
                     self._orthogonalize(temp_P)
-                    torch.matmul(matrix.t(), temp_P, out=temp_Q)
+                    torch.matmul(matrix.t().float(), temp_P, out=temp_Q)
                     dist.all_reduce(temp_Q)
                     temp_Q /= dist.get_world_size()
+                    #if dist.get_rank() == 0:
+                     #   print('Temp_P is :',temp_P[0,0:10])
+                      #  print('Temp_Q is :',temp_Q[0,0:10])
 
-                    temp_exp = torch.mm(temp_P,temp_Q.t())
+                    temp_exp = torch.flatten(torch.mm(temp_P,temp_Q.t()))
+                    #dist.all_reduce(temp_exp[tlen:-1])
+                    #temp_exp[tlen:-1] /= dist.get_world_size()
                     # if dist.get_rank() == 0 or dist.get_rank()==16:
                     #   if (state['step']+1)%10 ==0:
                     #      print('Before is:  ',temp_exp[0:10])
